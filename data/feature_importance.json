@@ -1,0 +1,216 @@
+{
+  "important_features": [
+    {
+      "name": "前走着順",
+      "importance": "very_high",
+      "category": "過去成績",
+      "description": "前走での着順。特に前走1-3着馬は好走率が高い",
+      "target_usage": "レース検索で「前走着順」を条件に設定。集計項目で「前走着順」を選択",
+      "statistical_impact": "前走1着馬の勝率は約25%（平均の2倍以上）。前走3着以内の馬の複勝率は約45%",
+      "sql_example": "SELECT * FROM NL_RA_RACE_UMA WHERE previous_finish_position <= 3"
+    },
+    {
+      "name": "前走人気",
+      "importance": "high",
+      "category": "過去成績",
+      "description": "前走での人気順位。前走で人気薄だった馬の巻き返しに注目",
+      "target_usage": "「前走人気」で絞り込み。人気と着順のギャップを分析",
+      "statistical_impact": "前走1-3番人気馬の信頼度が高い。前走10番人気以下で好走した馬は次走も狙い目",
+      "sql_example": "SELECT * FROM NL_RA_RACE_UMA WHERE previous_popularity >= 10 AND previous_finish_position <= 5"
+    },
+    {
+      "name": "休養週数",
+      "importance": "high",
+      "category": "調整",
+      "description": "前走からの休養期間。10-25週の長期休養は要注意",
+      "target_usage": "「前走間隔」で集計。休養明けの成績を分析",
+      "statistical_impact": "10-25週休養の1番人気勝率は22.5%（通常32.7%）。2-8週が最も安定",
+      "sql_example": "SELECT *, julianday(race_date) - julianday(previous_race_date) as rest_days FROM NL_RA_RACE_UMA"
+    },
+    {
+      "name": "距離適性",
+      "importance": "very_high",
+      "category": "適性",
+      "description": "馬の得意距離。距離延長・短縮の影響は大きい",
+      "target_usage": "「距離別成績」で集計。前走との距離差を確認",
+      "statistical_impact": "得意距離での勝率は苦手距離の2-3倍。短縮は有利な傾向",
+      "sql_example": "SELECT horse_id, distance, COUNT(*) as races, SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_RA_RACE_UMA GROUP BY horse_id, distance"
+    },
+    {
+      "name": "馬場状態適性",
+      "importance": "high",
+      "category": "適性",
+      "description": "良馬場・重馬場での適性。馬によって得意不得意が顕著",
+      "target_usage": "「馬場状態別成績」で集計",
+      "statistical_impact": "重馬場で勝率30%以上の馬は重馬場で特に信頼できる",
+      "sql_example": "SELECT horse_id, track_condition, AVG(finish_position) as avg_position FROM NL_RA_RACE_UMA GROUP BY horse_id, track_condition"
+    },
+    {
+      "name": "枠番・馬番",
+      "importance": "medium",
+      "category": "枠順",
+      "description": "コースによって有利不利がある。内枠有利・外枠有利はコース次第",
+      "target_usage": "「枠番別成績」「馬番別成績」で集計",
+      "statistical_impact": "東京1600mは内枠有利、新潟外回りは外枠有利など",
+      "sql_example": "SELECT track_code, distance, bracket_number, AVG(finish_position) FROM NL_RA_RACE_UMA JOIN NL_RA_RACE USING(race_id) GROUP BY track_code, distance, bracket_number"
+    },
+    {
+      "name": "騎手成績",
+      "importance": "high",
+      "category": "人的要因",
+      "description": "騎手の腕前・コース適性。上位騎手の信頼度は高い",
+      "target_usage": "「騎手別成績」で集計。特定コースでの成績を確認",
+      "statistical_impact": "リーディング上位騎手の勝率は10-15%（平均6-7%）",
+      "sql_example": "SELECT jockey_name, COUNT(*) as races, SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_RA_RACE_UMA GROUP BY jockey_name ORDER BY wins DESC"
+    },
+    {
+      "name": "調教師成績",
+      "importance": "medium",
+      "category": "人的要因",
+      "description": "調教師の実力・得意パターン",
+      "target_usage": "「調教師別成績」で集計",
+      "statistical_impact": "上位調教師の勝率は8-12%",
+      "sql_example": "SELECT trainer_name, COUNT(*) as races, SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_RA_RACE_UMA GROUP BY trainer_name"
+    },
+    {
+      "name": "オッズ（人気）",
+      "importance": "very_high",
+      "category": "市場評価",
+      "description": "市場の評価。1番人気の信頼度は高い",
+      "target_usage": "「人気別成績」で集計",
+      "statistical_impact": "1番人気の勝率32.7%、複勝率64.5%（2017-2019年）",
+      "sql_example": "SELECT popularity, COUNT(*) as races, SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_RA_RACE_UMA GROUP BY popularity"
+    },
+    {
+      "name": "馬体重",
+      "importance": "medium",
+      "category": "馬の状態",
+      "description": "馬体重の増減。大幅な増減は要注意",
+      "target_usage": "「馬体重別成績」で集計",
+      "statistical_impact": "±10kg以上の増減は成績低下の傾向。適正体重維持が重要",
+      "sql_example": "SELECT horse_weight_diff, AVG(finish_position) as avg_position FROM NL_RA_RACE_UMA WHERE horse_weight_diff IS NOT NULL GROUP BY horse_weight_diff"
+    },
+    {
+      "name": "クラス",
+      "importance": "high",
+      "category": "レベル",
+      "description": "レースのクラス。昇級・降級の影響",
+      "target_usage": "「クラス別成績」で集計",
+      "statistical_impact": "昇級初戦は苦戦傾向。降級は有利",
+      "sql_example": "SELECT grade, COUNT(*) as races FROM NL_RA_RACE GROUP BY grade"
+    },
+    {
+      "name": "血統（種牡馬）",
+      "importance": "high",
+      "category": "血統",
+      "description": "父馬の産駒傾向。距離・馬場適性は遺伝する",
+      "target_usage": "「種牡馬別成績」で集計。コース別・距離別で分析",
+      "statistical_impact": "種牡馬によってダート・芝、短距離・長距離の得意不得意が明確",
+      "sql_example": "SELECT u.sire_name, r.distance, COUNT(*) as races, SUM(CASE WHEN ru.finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_UM_UMA u JOIN NL_RA_RACE_UMA ru ON u.horse_id = ru.horse_id JOIN NL_RA_RACE r ON ru.race_id = r.race_id GROUP BY u.sire_name, r.distance"
+    },
+    {
+      "name": "母父（ブルードメアサイア）",
+      "importance": "medium",
+      "category": "血統",
+      "description": "母の父。スタミナ・底力に影響",
+      "target_usage": "「母父別成績」で集計",
+      "statistical_impact": "特定の種牡馬×母父の組み合わせ（ニックス）で好走率向上",
+      "sql_example": "SELECT broodmare_sire_name, COUNT(*) as races FROM NL_UM_UMA u JOIN NL_RA_RACE_UMA ru ON u.horse_id = ru.horse_id GROUP BY broodmare_sire_name"
+    },
+    {
+      "name": "馬齢",
+      "importance": "medium",
+      "category": "馬の状態",
+      "description": "馬の年齢。3-5歳が全盛期",
+      "target_usage": "「馬齢別成績」で集計",
+      "statistical_impact": "3-4歳が最もパフォーマンスが高い。6歳以上は衰え",
+      "sql_example": "SELECT (julianday(race_date) - julianday(birth_date)) / 365 as age, AVG(finish_position) FROM NL_UM_UMA u JOIN NL_RA_RACE_UMA ru ON u.horse_id = ru.horse_id JOIN NL_RA_RACE r ON ru.race_id = r.race_id GROUP BY CAST(age AS INTEGER)"
+    },
+    {
+      "name": "性別",
+      "importance": "low",
+      "category": "馬の属性",
+      "description": "牡馬・牝馬・セン馬の違い",
+      "target_usage": "「性別別成績」で集計",
+      "statistical_impact": "牡馬が全体的に優勢だが、牝馬限定戦では牝馬が有利",
+      "sql_example": "SELECT sex, COUNT(*) as races, SUM(CASE WHEN finish_position = 1 THEN 1 ELSE 0 END) as wins FROM NL_UM_UMA u JOIN NL_RA_RACE_UMA ru ON u.horse_id = ru.horse_id GROUP BY sex"
+    },
+    {
+      "name": "脚質",
+      "importance": "medium",
+      "category": "レーススタイル",
+      "description": "逃げ・先行・差し・追込",
+      "target_usage": "通過順位から脚質を判定。「脚質別成績」を分析",
+      "statistical_impact": "コースによって有利な脚質が異なる",
+      "sql_example": "SELECT passing_order, AVG(finish_position) as avg_position FROM NL_RA_RACE_UMA WHERE passing_order IS NOT NULL GROUP BY passing_order"
+    },
+    {
+      "name": "上がり3Fタイム",
+      "importance": "high",
+      "category": "タイム指数",
+      "description": "ラスト600mのタイム。末脚の鋭さを示す",
+      "target_usage": "「上がり3F」で並び替え。上位馬をチェック",
+      "statistical_impact": "上がり3F上位の馬は次走も好走しやすい",
+      "sql_example": "SELECT horse_id, last_3f_time, finish_position FROM NL_RA_RACE_UMA WHERE last_3f_time IS NOT NULL ORDER BY last_3f_time"
+    },
+    {
+      "name": "ペース",
+      "importance": "medium",
+      "category": "レース展開",
+      "description": "前半ペース・後半ペース。スローペースかハイペースか",
+      "target_usage": "通過タイムから計算。「ペース別成績」を分析",
+      "statistical_impact": "ハイペースは先行馬不利、スローペースは差し馬不利",
+      "sql_example": "SELECT race_id, AVG(time) as avg_time FROM NL_RA_RACE_UMA GROUP BY race_id"
+    },
+    {
+      "name": "開催場所（競馬場）",
+      "importance": "medium",
+      "category": "コース",
+      "description": "各競馬場の特性。コースの癖を知る",
+      "target_usage": "「開催場所別成績」で集計",
+      "statistical_impact": "福島・小倉は1番人気の信頼度が低い（勝率25%以下）",
+      "sql_example": "SELECT track_code, COUNT(*) as races FROM NL_RA_RACE GROUP BY track_code"
+    },
+    {
+      "name": "斤量",
+      "importance": "medium",
+      "category": "負担重量",
+      "description": "騎手込みの負担重量。ハンデ戦では重要",
+      "target_usage": "「斤量別成績」で集計",
+      "statistical_impact": "ハンデ戦は斤量の影響大。斤量差3kg以上は不利",
+      "sql_example": "SELECT weight, AVG(finish_position) as avg_position FROM NL_RA_RACE_UMA GROUP BY weight"
+    }
+  ],
+  "feature_combinations": [
+    {
+      "combination": "前走1着 × 同距離",
+      "description": "前走で勝った馬が同じ距離のレースに出走",
+      "impact": "勝率35%以上。非常に信頼できる",
+      "target_usage": "前走着順=1、距離差=0で検索"
+    },
+    {
+      "combination": "休養2-8週 × 1番人気",
+      "description": "適度な休養後の1番人気",
+      "impact": "勝率40%前後。最も安定したパターン",
+      "target_usage": "前走間隔2-8週、人気=1で検索"
+    },
+    {
+      "combination": "距離短縮 × 上がり3F上位",
+      "description": "距離短縮で末脚が使える馬",
+      "impact": "勝率30%以上。狙い目のパターン",
+      "target_usage": "距離変更=-200m以下、前走上がり3F順位3位以内"
+    },
+    {
+      "combination": "重馬場適性 × 重馬場",
+      "description": "重馬場で好成績の馬が重馬場で走る",
+      "impact": "勝率40%以上。得意条件での信頼度",
+      "target_usage": "過去重馬場成績で絞り込み"
+    }
+  ],
+  "references": [
+    "TARGET frontier JV 使い方マニュアル",
+    "競馬予想で始める機械学習 (Zenn)",
+    "LightGBMで競馬AIの簡単な実装 (Qiita)",
+    "過去30年データを活用した予想方法 (moukaru-keiba.com)"
+  ]
+}
