@@ -152,6 +152,47 @@ Claude Desktopで以下のメッセージを送信：
 
 テーブル情報が返ってくれば成功です！
 
+## ステップ5: Docker でのデプロイ（オプション）
+
+Dockerを使用すると、環境構築が簡単になります。
+
+### 5-1. データディレクトリの準備
+
+```bash
+# プロジェクトディレクトリでdataフォルダを作成
+cd C:\Users\<username>\jvlink-mcp-server
+mkdir data
+
+# データベースファイルをコピー
+copy C:\Users\<username>\JVData\race.db data\race.db
+```
+
+### 5-2. Dockerイメージのビルドと起動
+
+```bash
+# イメージをビルド
+docker compose build
+
+# サーバーを起動
+docker compose up jvlink-sqlite
+```
+
+### 5-3. Claude Desktop での接続
+
+HTTP経由で接続する場合：
+
+```json
+{
+  "mcpServers": {
+    "jvlink": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+詳細は [DOCKER_SETUP.md](DOCKER_SETUP.md) を参照してください。
+
 ## トラブルシューティング
 
 ### エラー: DB_PATH environment variable not set

@@ -84,6 +84,26 @@ SQLite、DuckDB、PostgreSQLの3種類に対応しています。
 
 詳細は [DB_COMPATIBILITY.md](DB_COMPATIBILITY.md) を参照してください。
 
+## Docker サポート
+
+Dockerで簡単にデプロイできます：
+
+```bash
+# データディレクトリを準備
+mkdir data
+cp ~/JVData/race.db data/race.db
+
+# Dockerイメージをビルド
+docker compose build
+
+# サーバーを起動
+docker compose up jvlink-sqlite
+```
+
+アクセス: `http://localhost:8000/sse`
+
+詳細は [DOCKER_SETUP.md](DOCKER_SETUP.md) を参照してください。
+
 ## ライセンス
 
 Apache License 2.0

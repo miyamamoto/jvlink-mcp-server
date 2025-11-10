@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # JVLink MCP Server - SQLite版（デフォルト）
+  jvlink-sqlite:
+    build: .
+    container_name: jvlink-mcp-sqlite
+    environment:
+      - DB_TYPE=sqlite
+      - DB_PATH=/data/race.db
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    volumes:
+      # データベースファイルをマウント
+      - ./data:/data:rw
+    ports:
+      - "8000:8000"
+    # stdio mode for local connections (default)
+    # Remove 'command' to use stdio mode
+    command: python -m jvlink_mcp_server.server_sse
+    restart: unless-stopped
+    networks:
+      - jvlink-network
+
+  # JVLink MCP Server - DuckDB版（分析用）
+  jvlink-duckdb:
+    build: .
+    container_name: jvlink-mcp-duckdb
+    environment:
+      - DB_TYPE=duckdb
+      - DB_PATH=/data/race.duckdb
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    volumes:
+      - ./data:/data:rw
+    ports:
+      - "8001:8001"
+    command: python -m jvlink_mcp_server.server_sse
+    restart: unless-stopped
+    networks:
+      - jvlink-network
+    profiles:
+      - duckdb
+
+  # JVLink MCP Server - PostgreSQL版（本格運用）
+  jvlink-postgresql:
+    build: .
+    container_name: jvlink-mcp-postgresql
+    environment:
+      - DB_TYPE=postgresql
+      - DB_CONNECTION_STRING=Host=postgres;Database=jvlink;Username=jvlink_user
+      - JVLINK_DB_PASSWORD=jvlink_password
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8002
+    ports:
+      - "8002:8002"
+    command: python -m jvlink_mcp_server.server_sse
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - jvlink-network
+    profiles:
+      - postgresql
+
+  # PostgreSQL Database（オプション）
+  postgres:
+    image: postgres:16-alpine
+    container_name: jvlink-postgres
+    environment:
+      - POSTGRES_DB=jvlink
+      - POSTGRES_USER=jvlink_user
+      - POSTGRES_PASSWORD=jvlink_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jvlink_user -d jvlink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - jvlink-network
+    profiles:
+      - postgresql
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  jvlink-network:
+    driver: bridge

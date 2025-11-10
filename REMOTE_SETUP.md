@@ -98,7 +98,22 @@ curl http://127.0.0.1:8000/sse
 
 ## リモートサーバーへのデプロイ
 
-### 設定例（リモートサーバー）
+### 方法1: Docker（推奨）
+
+最も簡単な方法はDockerを使用することです：
+
+```bash
+# データベースファイルを準備
+mkdir data
+cp /path/to/race.db data/race.db
+
+# Dockerでサーバーを起動
+docker compose up jvlink-sqlite
+```
+
+詳細は [DOCKER_SETUP.md](DOCKER_SETUP.md) を参照してください。
+
+### 方法2: 手動セットアップ
 
 #### サーバー側 .env
 ```bash
@@ -204,5 +219,5 @@ DB_PATH=/path/to/race.db               # Linux/Macの場合
 - [ ] HTTPS/TLS サポート
 - [ ] リクエストレート制限
 - [ ] ログ記録と監視
-- [ ] Docker対応
+- [x] Docker対応 ✅ - [DOCKER_SETUP.md](DOCKER_SETUP.md) 参照
 - [ ] Kubernetes対応
