@@ -1,91 +1,52 @@
 # JVLink MCP Server
 
-TARGET frontier JV風の競馬分析MCPサーバー
+TARGET frontier JV風の競馬分析MCPサーバー（DuckDB推奨）
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python](https://img.shields.io/badge/Python-3.11+-green.svg)](https://www.python.org/)
 
 ## 概要
 
-JVLink MCP Serverは、[JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)で作成した競馬データベース（SQLite/DuckDB/PostgreSQL）にアクセスするためのModel Context Protocol (MCP)サーバーです。
+JVLink MCP Serverは、[JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)で作成した競馬データベースにアクセスするためのModel Context Protocol (MCP)サーバーです。
 
-TARGET frontier JVの機能を参考に、競馬データの検索・分析・予測に必要な機能を提供します。
+**推奨データベース**: DuckDB（分析クエリが高速、セットアップが簡単）
 
-## 主な機能
+### なぜDuckDBを推奨するのか？
 
-### 1. データベーススキーマ情報
-- テーブル一覧取得
-- スキーマ情報取得
-- TARGET frontier JVとの対応表
+- ✅ **高速な分析クエリ** - 集計・GROUP BYが2-10倍高速
+- ✅ **簡単セットアップ** - サーバー不要、ファイル1つ
+- ✅ **Pythonと相性良好** - pandas連携がスムーズ
+- ✅ **メモリ効率的** - 大規模データも快適に処理
 
-### 2. 特徴量知見提供
-- 20種類以上の重要特徴量の説明
-- 各特徴量の統計的影響
-- TARGET frontier JVでの活用方法
-- 特徴量の組み合わせパターン
+## データベースセットアップ
 
-### 3. 自然言語SQL生成
-- 自然言語からSQLクエリを動的生成
-- 安全なクエリ実行（読み取り専用）
-- SQLクエリの検証
+### ステップ1: JVLinkToSQLiteでDuckDB作成
 
-### 4. TARGET風レース検索
-- 競馬場、距離、馬場状態、グレード等で検索
-- 人気別成績分析
-- 条件別統計
+'''bash
+# DuckDB形式で競馬データをインポート
+JVLinkToSQLite.exe --datasource race.duckdb --mode Exec
+'''
 
-## インストール
+### ステップ2: 環境変数設定
 
-### 前提条件
+'''.env''' ファイルを作成：
 
-- Python 3.11以上
-- [uv](https://github.com/astral-sh/uv)がインストールされていること
-- JVLinkToSQLiteで作成したデータベース
-
-### セットアップ
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/YOUR_USERNAME/jvlink-mcp-server.git
-cd jvlink-mcp-server
-
-# 依存関係をインストール
-uv sync
-
-# 環境変数を設定
-cp .env.example .env
-# .envファイルを編集してデータベースパスを設定
-```
-
-### 環境変数の設定
-
-`.env`ファイルを作成し、以下の環境変数を設定してください：
-
-```bash
-# SQLiteの場合
-DB_TYPE=sqlite
-DB_PATH=C:/Users/mitsu/JVLinkToSQLite/race.db
-
-# DuckDBの場合
+'''bash
 DB_TYPE=duckdb
-DB_PATH=C:/Users/mitsu/JVLinkToSQLite/race.duckdb
+DB_PATH=C:/Users/mitsu/JVData/race.duckdb
+'''
 
-# PostgreSQLの場合
-DB_TYPE=postgresql
-DB_CONNECTION_STRING=Host=localhost;Database=jvlink;Username=jvlink_user
-JVLINK_DB_PASSWORD=your_password
-```
+### ステップ3: 接続テスト
+
+'''bash
+uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db = DatabaseConnection(); print(db.get_tables())"
+'''
 
 ## 使用方法
 
-### MCPサーバーとして起動
-
-```bash
-uv run python -m jvlink_mcp_server.server
-```
-
 ### Claude Desktopで使用
 
-Claude Desktopの設定ファイル（`claude_desktop_config.json`）に以下を追加：
-
-```json
+'''json
 {
   "mcpServers": {
     "jvlink": {
@@ -99,14 +60,14 @@ Claude Desktopの設定ファイル（`claude_desktop_config.json`）に以下�
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVLinkToSQLite/race.db"
+        "DB_TYPE": "duckdb",
+        "DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
       }
     }
   }
 }
-```
+'''
 
 ## ライセンス
 
-このプロジェクトは、JVLinkToSQLiteと同じライセンス（GNU GPLv3）の下で公開されています。
+Apache License 2.0
