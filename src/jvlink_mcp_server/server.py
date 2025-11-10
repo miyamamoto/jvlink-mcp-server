@@ -3,13 +3,22 @@
 import os
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+
+# .envファイルを読み込む
+load_dotenv()
 from .database.connection import DatabaseConnection
 from .database.schema_info import (
     get_schema_description,
     get_target_equivalent_query_examples,
     TRACK_CODES,
     GRADE_CODES,
+)
+from .database.schema_descriptions import (
+    get_column_description,
+    get_table_description,
+    QUERY_GENERATION_HINTS,
 )
 
 # FastMCPサーバーの初期化
@@ -60,19 +69,39 @@ def list_tables() -> list[str]:
 
 @mcp.tool()
 def get_table_info(table_name: str) -> dict:
-    """指定テーブルのスキーマ情報を取得
+    """指定テーブルのスキーマ情報を取得（詳細説明付き）
 
     Args:
         table_name: テーブル名
 
     Returns:
-        カラム情報を含む辞書
+        カラム情報、テーブル説明、クエリヒントを含む辞書
     """
     with DatabaseConnection() as db:
         schema_df = db.get_table_schema(table_name)
+        
+        # カラム情報に説明を追加
+        columns_with_desc = []
+        for _, row in schema_df.iterrows():
+            col_name = row["column_name"]
+            col_info = {
+                "name": col_name,
+                "type": row["column_type"],
+                "description": get_column_description(table_name, col_name)
+            }
+            columns_with_desc.append(col_info)
+        
+        # テーブル説明を取得
+        table_desc = get_table_description(table_name)
+        
         return {
             "table_name": table_name,
-            "columns": schema_df.to_dict(orient="records")
+            "table_description": table_desc.get("description", ""),
+            "target_equivalent": table_desc.get("target_equivalent", ""),
+            "primary_keys": table_desc.get("primary_keys", []),
+            "total_columns": len(columns_with_desc),
+            "columns": columns_with_desc,
+            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA_RACE", "NL_SE_RACE_UMA"] else ""
         }
 
 

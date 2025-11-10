@@ -26,7 +26,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
 
 ## 基本的な設定（Windows）
 
-### パターン1: 標準的な設定
+### パターン1: 標準的な設定（SQLite）
 
 ```json
 {
@@ -42,8 +42,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
       }
     }
   }
@@ -71,15 +71,15 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "D:/競馬データ/race.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "D:/競馬データ/race.db"
       }
     }
   }
 }
 ```
 
-### パターン3: SQLiteを使用する場合
+### パターン3: DuckDBを使用する場合
 
 ```json
 {
@@ -95,8 +95,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
+        "DB_TYPE": "duckdb",
+        "DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
       }
     }
   }
@@ -130,7 +130,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
 
 ## macOS / Linux の設定
 
-### パターン1: macOS標準設定
+### パターン1: macOS標準設定（SQLite）
 
 ```json
 {
@@ -146,15 +146,15 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "/Users/mitsu/JVData/race.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "/Users/mitsu/JVData/race.db"
       }
     }
   }
 }
 ```
 
-### パターン2: Linux標準設定
+### パターン2: Linux標準設定（SQLite）
 
 ```json
 {
@@ -170,8 +170,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "/home/mitsu/JVData/race.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "/home/mitsu/JVData/race.db"
       }
     }
   }
@@ -196,8 +196,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_prod.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/mitsu/JVData/race_prod.db"
       }
     },
     "jvlink-test": {
@@ -211,8 +211,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_test.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/mitsu/JVData/race_test.db"
       }
     }
   }
@@ -235,8 +235,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_2024.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/mitsu/JVData/race_2024.db"
       }
     },
     "jvlink-2023": {
@@ -250,8 +250,8 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_2023.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/mitsu/JVData/race_2023.db"
       }
     }
   }
@@ -371,10 +371,10 @@ ls -la ~/jvlink-mcp-server
 
 ```powershell
 # Windowsで確認
-dir C:\Users\mitsu\JVData\race.duckdb
+dir C:\Users\mitsu\JVData\race.db
 
 # macOS/Linuxで確認
-ls -la ~/JVData/race.duckdb
+ls -la ~/JVData/race.db
 ```
 
 ## パスの書き方の注意
@@ -382,20 +382,20 @@ ls -la ~/JVData/race.duckdb
 ### ✅ 正しい書き方
 
 ```json
-"DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
+"DB_PATH": "C:/Users/mitsu/JVData/race.db"
 ```
 
 ### ❌ 間違った書き方
 
 ```json
 // バックスラッシュは使わない
-"DB_PATH": "C:\Users\mitsu\JVData\race.duckdb"
+"DB_PATH": "C:\Users\mitsu\JVData\race.db"
 
 // Windowsスタイルのパスは使わない
-"DB_PATH": "C:\Users\mitsu\JVData\race.duckdb"
+"DB_PATH": "C:\Users\mitsu\JVData\race.db"
 
 // 相対パスは使わない
-"DB_PATH": "../JVData/race.duckdb"
+"DB_PATH": "../JVData/race.db"
 ```
 
 ## 設定例のダウンロード

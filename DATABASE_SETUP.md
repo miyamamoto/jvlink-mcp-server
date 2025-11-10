@@ -1,6 +1,6 @@
 # データベースセットアップガイド
 
-このガイドでは、JVLink MCP Serverで使用するDuckDBデータベースのセットアップ方法を詳しく説明します。
+このガイドでは、JVLink MCP Serverで使用するデータベースのセットアップ方法を詳しく説明します。
 
 ## 前提条件
 
@@ -10,18 +10,29 @@
 
 ## ステップ1: JVLinkToSQLiteのインストール
 
-### 1-1. リポジトリのクローン
+### 重要: どのバージョンを使うか
 
+以下のいずれかを選択してください：
+
+**公式版（SQLiteのみ対応）**
 ```bash
 git clone https://github.com/urasandesu/JVLinkToSQLite.git
 cd JVLinkToSQLite
 ```
 
-### 1-2. ビルド（必要に応じて）
+**拡張版（SQLite/DuckDB/PostgreSQL対応）**
+```bash
+git clone https://github.com/miyamamoto/JVLinkToSQLite.git
+cd JVLinkToSQLite
+```
 
-詳細は [JVLinkToSQLiteのREADME](https://github.com/urasandesu/JVLinkToSQLite) を参照してください。
+### 1-1. ビルド（必要に応じて）
 
-## ステップ2: DuckDBデータベースの作成
+詳細は以下のREADMEを参照してください：
+- 公式版: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
+- 拡張版: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+
+## ステップ2: SQLiteデータベースの作成
 
 ### 2-1. データベース保存ディレクトリの作成
 
@@ -29,7 +40,7 @@ cd JVLinkToSQLite
 # Windows
 mkdir C:\Users\<username>\JVData
 
-# macOS/Linux  
+# macOS/Linux
 mkdir ~/JVData
 ```
 
@@ -38,10 +49,10 @@ mkdir ~/JVData
 ```bash
 # Windows
 cd C:\path\to\JVLinkToSQLite
-JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.duckdb --mode Exec
+JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.db --mode Exec
 
 # macOS/Linux
-./JVLinkToSQLite --datasource ~/JVData/race.duckdb --mode Exec
+./JVLinkToSQLite --datasource ~/JVData/race.db --mode Exec
 ```
 
 **オプション:**
@@ -55,10 +66,10 @@ JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.duckdb --mode Ex
 
 ```bash
 # Windows
-dir C:\Users\<username>\JVData\race.duckdb
+dir C:\Users\<username>\JVData\race.db
 
 # macOS/Linux
-ls -lh ~/JVData/race.duckdb
+ls -lh ~/JVData/race.db
 ```
 
 ファイルサイズが0バイトでなければ成功です。
@@ -75,9 +86,9 @@ cp .env.example .env
 ### 3-2. .envファイルの編集
 
 ```bash
-# DuckDB設定（推奨）
-DB_TYPE=duckdb
-DB_PATH=C:/Users/<username>/JVData/race.duckdb
+# SQLite設定（デフォルト）
+DB_TYPE=sqlite
+DB_PATH=C:/Users/<username>/JVData/race.db
 ```
 
 **重要なポイント:**
@@ -117,8 +128,8 @@ Windows: `%APPDATA%\Claude\claude_desktop_config.json`
         "jvlink_mcp_server.server"
       ],
       "env": {
-        "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/<username>/JVData/race.duckdb"
+        "DB_TYPE": "sqlite",
+        "DB_PATH": "C:/Users/<username>/JVData/race.db"
       }
     }
   }
@@ -149,7 +160,7 @@ Claude Desktopで以下のメッセージを送信：
 
 **解決方法:**
 1. `.env`ファイルが存在するか確認
-2. `DB_TYPE=duckdb` と `DB_PATH=/path/to/race.duckdb` が記載されているか確認
+2. `DB_TYPE=sqlite` と `DB_PATH=/path/to/race.db` が記載されているか確認
 3. Claude Desktop設定の`env`セクションに同じ設定があるか確認
 
 ### エラー: Unable to open database file
@@ -163,11 +174,11 @@ Claude Desktopで以下のメッセージを送信：
 
 ```bash
 # 正しい例
-DB_PATH=C:/Users/mitsu/JVData/race.duckdb
+DB_PATH=C:/Users/mitsu/JVData/race.db
 
 # 間違った例
-DB_PATH=race.duckdb  # 相対パスはNG
-DB_PATH=C:\Users\mitsu\JVData\race.duckdb  # バックスラッシュはNG
+DB_PATH=race.db  # 相対パスはNG
+DB_PATH=C:\Users\mitsu\JVData\race.db  # バックスラッシュはNG
 ```
 
 ### エラー: テーブルが見つからない
@@ -193,14 +204,14 @@ DB_PATH=C:\Users\mitsu\JVData\race.duckdb  # バックスラッシュはNG
 
 ```bash
 # 最新データを追加取得
-JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.duckdb --mode Exec
+JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.db --mode Exec
 ```
 
 ### リアルタイム更新
 
 ```bash
 # イベントモードで起動（レース結果をリアルタイム取得）
-JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.duckdb --mode Event
+JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.db --mode Event
 ```
 
 ## データベースのバックアップ
@@ -209,47 +220,64 @@ JVLinkToSQLite.exe --datasource C:\Users\<username>\JVData\race.duckdb --mode Ev
 
 ```bash
 # Windows
-copy C:\Users\<username>\JVData\race.duckdb C:\Users\<username>\JVData\race_backup.duckdb
+copy C:\Users\<username>\JVData\race.db C:\Users\<username>\JVData\race_backup.db
 
 # macOS/Linux
-cp ~/JVData/race.duckdb ~/JVData/race_backup_$(date +%Y%m%d).duckdb
+cp ~/JVData/race.db ~/JVData/race_backup_$(date +%Y%m%d).db
 ```
 
 ## パフォーマンス最適化
 
 ### インデックスの確認
 
-DuckDBは自動的にインデックスを最適化しますが、以下で確認できます：
+SQLiteのインデックスを確認：
 
 ```sql
--- DuckDB CLIで実行
-PRAGMA show_tables;
+-- SQLite CLIで実行
+.schema
+.indexes
 ```
 
 ### データベースの最適化
 
 ```bash
-# データベースを最適化（VACUUMに相当）
-duckdb race.duckdb "VACUUM;"
+# データベースを最適化（VACUUM）
+sqlite3 race.db "VACUUM;"
 ```
 
 ## よくある質問（FAQ）
 
-### Q: SQLiteからDuckDBに移行できますか？
+### Q: DuckDBに移行できますか？
 
-A: はい、可能です。
+A: はい、可能です。DuckDBの方が分析クエリが高速です。
 
-```sql
--- DuckDB CLIで実行
-ATTACH 'race.db' AS sqlite_db (TYPE SQLITE);
-CREATE TABLE new_table AS SELECT * FROM sqlite_db.old_table;
+**方法1: 拡張版JVLinkToSQLiteで新規作成**
+
+[miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite) を使用：
+
+```bash
+# 拡張版をクローン
+git clone https://github.com/miyamamoto/JVLinkToSQLite.git
+cd JVLinkToSQLite
+
+# DuckDBを直接作成
+JVLinkToSQLite.exe --datasource C:/Users/<username>/JVData/race.duckdb --mode Exec
 ```
+
+**方法2: SQLiteから移行**
+
+```bash
+# DuckDB CLIでSQLiteをインポート
+duckdb race.duckdb "INSTALL sqlite; LOAD sqlite; ATTACH 'race.db' AS sqlite_db (TYPE SQLITE); CREATE TABLE new_table AS SELECT * FROM sqlite_db.old_table;"
+```
+
+詳細は [DB_COMPATIBILITY.md](DB_COMPATIBILITY.md) を参照してください。
 
 ### Q: データベースファイルのサイズはどのくらいになりますか？
 
 A: データ量によりますが、一般的には以下の通りです：
 - 1年分のデータ: 約2-5GB
-- 3年分のデータ: 約5-15GB  
+- 3年分のデータ: 約5-15GB
 - 10年分のデータ: 約15-50GB
 
 ### Q: 複数のデータベースを切り替えて使えますか？
@@ -258,7 +286,7 @@ A: はい、.envファイルまたはClaude Desktop設定で`DB_PATH`を変更�
 
 ### Q: PostgreSQLも使えますか？
 
-A: はい、対応していますが、DuckDBを推奨します。PostgreSQLを使う場合は別途サーバーのセットアップが必要です。
+A: はい、対応しています。PostgreSQLを使う場合は別途サーバーのセットアップが必要です。
 
 ## 次のステップ
 

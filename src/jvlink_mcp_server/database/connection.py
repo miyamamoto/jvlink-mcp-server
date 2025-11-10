@@ -125,22 +125,32 @@ class DatabaseConnection:
             table_name: テーブル名
 
         Returns:
-            カラム情報を含むDataFrame
+            カラム情報を含むDataFrame (統一フォーマット: column_name, column_type)
         """
         conn = self.connect()
 
         if self.db_type == "sqlite":
             query = f"PRAGMA table_info({table_name})"
+            df = self.execute_query(query)
+            # SQLiteの結果を統一フォーマットに変換: name -> column_name, type -> column_type
+            df = df.rename(columns={"name": "column_name", "type": "column_type"})
+
         elif self.db_type == "duckdb":
             query = f"DESCRIBE {table_name}"
+            df = self.execute_query(query)
+            # DuckDBは既に column_name, column_type を使用しているのでそのまま
+
         elif self.db_type == "postgresql":
             query = f"""
                 SELECT column_name, data_type, is_nullable
                 FROM information_schema.columns
                 WHERE table_name = '{table_name}'
             """
+            df = self.execute_query(query)
+            # PostgreSQLの結果を統一フォーマットに変換: data_type -> column_type
+            df = df.rename(columns={"data_type": "column_type"})
 
-        return self.execute_query(query)
+        return df
 
     def close(self):
         """データベース接続を閉じる"""
