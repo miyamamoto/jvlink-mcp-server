@@ -4,6 +4,7 @@ services:
   # JVLink MCP Server - SQLite版（デフォルト）
   jvlink-sqlite:
     build: .
+    image: jvlink-mcp-server:sqlite
     container_name: jvlink-mcp-sqlite
     environment:
       - DB_TYPE=sqlite
@@ -11,8 +12,11 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
     volumes:
-      # データベースファイルをマウント
-      - ./data:/data:rw
+      # JVLinkToSQLiteが管理する外部DBディレクトリを直接マウント
+      # Windows例: C:/Users/<username>/JVData:/data:rw
+      # Linux/Mac例: ~/JVData:/data:rw
+      # リアルタイムでDBが更新されると即座に反映されます
+      - ${JVDATA_DIR:-./data}:/data:rw
     ports:
       - "8000:8000"
     # stdio mode for local connections (default)
@@ -25,6 +29,7 @@ services:
   # JVLink MCP Server - DuckDB版（分析用）
   jvlink-duckdb:
     build: .
+    image: jvlink-mcp-server:duckdb
     container_name: jvlink-mcp-duckdb
     environment:
       - DB_TYPE=duckdb
@@ -32,7 +37,8 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8001
     volumes:
-      - ./data:/data:rw
+      # JVLinkToSQLiteが管理する外部DBディレクトリを直接マウント
+      - ${JVDATA_DIR:-./data}:/data:rw
     ports:
       - "8001:8001"
     command: python -m jvlink_mcp_server.server_sse
@@ -45,6 +51,7 @@ services:
   # JVLink MCP Server - PostgreSQL版（本格運用）
   jvlink-postgresql:
     build: .
+    image: jvlink-mcp-server:postgresql
     container_name: jvlink-mcp-postgresql
     environment:
       - DB_TYPE=postgresql

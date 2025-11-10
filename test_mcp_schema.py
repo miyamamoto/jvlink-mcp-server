@@ -6,7 +6,7 @@ import json
 
 # Set environment variables
 os.environ.setdefault("DB_TYPE", "duckdb")
-os.environ.setdefault("DB_PATH", "C:/Users/mitsu/JVData/race.duckdb")
+os.environ.setdefault("DB_PATH", "C:/Users/<username>/JVData/race.duckdb")
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))

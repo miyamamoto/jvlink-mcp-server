@@ -35,7 +35,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -43,7 +43,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race.db"
       }
     }
   }
@@ -64,7 +64,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -88,7 +88,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -96,7 +96,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
+        "DB_PATH": "C:/Users/<username>/JVData/race.duckdb"
       }
     }
   }
@@ -112,7 +112,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -139,7 +139,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "/Users/mitsu/jvlink-mcp-server",
+        "/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -147,7 +147,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "/Users/mitsu/JVData/race.db"
+        "DB_PATH": "/Users/<username>/JVData/race.db"
       }
     }
   }
@@ -163,7 +163,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "/home/mitsu/jvlink-mcp-server",
+        "/home/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -171,7 +171,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "/home/mitsu/JVData/race.db"
+        "DB_PATH": "/home/<username>/JVData/race.db"
       }
     }
   }
@@ -189,7 +189,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -197,14 +197,14 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_prod.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race_prod.db"
       }
     },
     "jvlink-test": {
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -212,7 +212,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_test.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race_test.db"
       }
     }
   }
@@ -228,7 +228,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -236,14 +236,14 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_2024.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race_2024.db"
       }
     },
     "jvlink-2023": {
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -251,7 +251,7 @@ C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race_2023.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race_2023.db"
       }
     }
   }
@@ -354,7 +354,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ```powershell
 # Windowsで確認
-dir C:\Users\mitsu\jvlink-mcp-server
+dir C:\Users\<username>\jvlink-mcp-server
 
 # macOS/Linuxで確認
 ls -la ~/jvlink-mcp-server
@@ -371,7 +371,7 @@ ls -la ~/jvlink-mcp-server
 
 ```powershell
 # Windowsで確認
-dir C:\Users\mitsu\JVData\race.db
+dir C:\Users\<username>\JVData\race.db
 
 # macOS/Linuxで確認
 ls -la ~/JVData/race.db
@@ -382,17 +382,17 @@ ls -la ~/JVData/race.db
 ### ✅ 正しい書き方
 
 ```json
-"DB_PATH": "C:/Users/mitsu/JVData/race.db"
+"DB_PATH": "C:/Users/<username>/JVData/race.db"
 ```
 
 ### ❌ 間違った書き方
 
 ```json
 // バックスラッシュは使わない
-"DB_PATH": "C:\Users\mitsu\JVData\race.db"
+"DB_PATH": "C:\Users\<username>\JVData\race.db"
 
 // Windowsスタイルのパスは使わない
-"DB_PATH": "C:\Users\mitsu\JVData\race.db"
+"DB_PATH": "C:\Users\<username>\JVData\race.db"
 
 // 相対パスは使わない
 "DB_PATH": "../JVData/race.db"

@@ -23,10 +23,10 @@ JVLink MCP Serverは**ローカル接続**と**リモート接続**の両方を�
 {
   "mcpServers": {
     "jvlink-mcp-server": {
-      "command": "C:/Users/mitsu/.local/bin/uv.exe",
+      "command": "C:/Users/<username>/.local/bin/uv.exe",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -34,7 +34,7 @@ JVLink MCP Serverは**ローカル接続**と**リモート接続**の両方を�
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race.db"
       }
     }
   }
@@ -47,7 +47,7 @@ JVLink MCP Serverは**ローカル接続**と**リモート接続**の両方を�
 
 **Windowsの場合:**
 ```cmd
-cd C:\Users\mitsu\jvlink-mcp-server
+cd C:\Users\<username>\jvlink-mcp-server
 start_server.bat
 ```
 
@@ -67,7 +67,7 @@ uv run python -m jvlink_mcp_server.server_sse
 ```bash
 # Database configuration
 DB_TYPE=sqlite
-DB_PATH=C:/Users/mitsu/JVData/race.db
+DB_PATH=C:/Users/<username>/JVData/race.db
 
 # MCP Server configuration
 MCP_HOST=0.0.0.0    # リモートからアクセス可能にする場合
@@ -202,7 +202,7 @@ MCP_PORT=8001
 
 .envファイルのDB_PATHが正しいか確認：
 ```bash
-DB_PATH=C:/Users/mitsu/JVData/race.db  # Windowsの場合
+DB_PATH=C:/Users/<username>/JVData/race.db  # Windowsの場合
 DB_PATH=/path/to/race.db               # Linux/Macの場合
 ```
 

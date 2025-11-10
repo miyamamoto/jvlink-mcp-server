@@ -90,11 +90,11 @@ CREATE TABLE NL_SE_RACE_UMA AS SELECT * FROM sqlite_db.NL_SE_RACE_UMA;
 ```bash
 # 変更前（SQLite）
 DB_TYPE=sqlite
-DB_PATH=C:/Users/mitsu/JVData/race.db
+DB_PATH=C:/Users/<username>/JVData/race.db
 
 # 変更後（DuckDB）
 DB_TYPE=duckdb
-DB_PATH=C:/Users/mitsu/JVData/race.duckdb
+DB_PATH=C:/Users/<username>/JVData/race.duckdb
 ```
 
 ## 技術的な実装詳細
@@ -203,7 +203,7 @@ SQLite          : [PASS]
       "args": ["--directory", "...", "run", "python", "-m", "jvlink_mcp_server.server"],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race.db"
       }
     },
     "jvlink-duckdb": {
@@ -211,7 +211,7 @@ SQLite          : [PASS]
       "args": ["--directory", "...", "run", "python", "-m", "jvlink_mcp_server.server"],
       "env": {
         "DB_TYPE": "duckdb",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.duckdb"
+        "DB_PATH": "C:/Users/<username>/JVData/race.duckdb"
       }
     }
   }

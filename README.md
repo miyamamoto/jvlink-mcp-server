@@ -39,7 +39,7 @@ JVLinkToSQLite.exe --datasource race.db --mode Exec
 
 ```bash
 DB_TYPE=sqlite
-DB_PATH=C:/Users/mitsu/JVData/race.db
+DB_PATH=C:/Users/<username>/JVData/race.db
 ```
 
 ### ステップ3: 接続テスト
@@ -59,7 +59,7 @@ uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db 
       "command": "uv",
       "args": [
         "--directory",
-        "C:/Users/mitsu/jvlink-mcp-server",
+        "C:/Users/<username>/jvlink-mcp-server",
         "run",
         "python",
         "-m",
@@ -67,7 +67,7 @@ uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db 
       ],
       "env": {
         "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/mitsu/JVData/race.db"
+        "DB_PATH": "C:/Users/<username>/JVData/race.db"
       }
     }
   }
@@ -89,18 +89,20 @@ SQLite、DuckDB、PostgreSQLの3種類に対応しています。
 Dockerで簡単にデプロイできます：
 
 ```bash
-# データディレクトリを準備
-mkdir data
-cp ~/JVData/race.db data/race.db
+# JVDataディレクトリを環境変数で指定
+export JVDATA_DIR=C:/Users/<username>/JVData  # Windows
+export JVDATA_DIR=~/JVData                     # Linux/Mac
 
 # Dockerイメージをビルド
 docker compose build
 
-# サーバーを起動
+# サーバーを起動（JVLinkToSQLiteのDBを直接マウント）
 docker compose up jvlink-sqlite
 ```
 
 アクセス: `http://localhost:8000/sse`
+
+**注意**: JVLinkToSQLiteで作成したデータベースのみ対応しています。
 
 詳細は [DOCKER_SETUP.md](DOCKER_SETUP.md) を参照してください。
 

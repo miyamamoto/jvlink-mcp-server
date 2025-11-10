@@ -215,11 +215,11 @@ HTTP経由で接続する場合：
 
 ```bash
 # 正しい例
-DB_PATH=C:/Users/mitsu/JVData/race.db
+DB_PATH=C:/Users/<username>/JVData/race.db
 
 # 間違った例
 DB_PATH=race.db  # 相対パスはNG
-DB_PATH=C:\Users\mitsu\JVData\race.db  # バックスラッシュはNG
+DB_PATH=C:\Users\<username>\JVData\race.db  # バックスラッシュはNG
 ```
 
 ### エラー: テーブルが見つからない

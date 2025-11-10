@@ -68,8 +68,8 @@ def main():
     print("=" * 80)
 
     # Check which databases are available
-    duckdb_path = "C:/Users/mitsu/JVData/race.duckdb"
-    sqlite_path = "C:/Users/mitsu/JVData/race.db"
+    duckdb_path = "C:/Users/<username>/JVData/race.duckdb"
+    sqlite_path = "C:/Users/<username>/JVData/race.db"
 
     results = {}
 
