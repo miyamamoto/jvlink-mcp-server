@@ -47,9 +47,13 @@ JVLINK_TABLES = {
             "Umaban": "馬番",
             "KettoNum": "血統登録番号（馬ID）",
             "Bamei": "馬名",
+            "Wakuban": "枠番",
+            "BaTaijyu": "馬体重",
+            "ZogenSa": "馬体重増減",
 
             # 騎手・調教師
             "KisyuRyakusyo": "騎手名略称",
+            "KisyuRyakusyoBefore": "前走騎手名",
             "ChokyosiRyakusyo": "調教師名略称",
 
             # レース結果
@@ -58,6 +62,58 @@ JVLINK_TABLES = {
             "Odds": "単勝オッズ",
             "Time": "走破タイム",
             "HaronTimeL3": "後3ハロンタイム",
+        },
+    },
+
+    "NL_UM_UMA": {
+        "description": "馬マスタテーブル",
+        "target_equivalent": "馬データ検索画面",
+        "primary_keys": ["KettoNum"],
+        "key_columns": {
+            "KettoNum": "血統登録番号（馬の一意識別子）",
+            "Bamei": "馬名",
+            "BameiKana": "馬名カナ",
+            "BameiEng": "馬名英字",
+            "SexCD": "性別コード",
+            "KeiroCD": "毛色コード",
+            "BirthDate": "生年月日",
+
+            # 血統情報（三代血統）
+            "Ketto3Info1Bamei": "父馬名",
+            "Ketto3Info2Bamei": "母馬名",
+            "Ketto3Info3Bamei": "父父",
+            "Ketto3Info4Bamei": "父母",
+            "Ketto3Info5Bamei": "母父",
+            "Ketto3Info6Bamei": "母母",
+
+            # 関係者
+            "BanusiName": "馬主名",
+            "BanusiCode": "馬主コード",
+            "ChokyosiRyakusyo": "調教師略称",
+        },
+    },
+
+    "NL_KS_KISYU": {
+        "description": "騎手マスタテーブル",
+        "target_equivalent": "騎手データ画面",
+        "primary_keys": ["KisyuCode"],
+        "key_columns": {
+            "KisyuCode": "騎手コード",
+            "KisyuName": "騎手名",
+            "KisyuNameKana": "騎手名カナ",
+            "KisyuNameEng": "騎手名英字",
+        },
+    },
+
+    "NL_CH_CHOKYOSI": {
+        "description": "調教師マスタテーブル",
+        "target_equivalent": "調教師データ画面",
+        "primary_keys": ["ChokyosiCode"],
+        "key_columns": {
+            "ChokyosiCode": "調教師コード",
+            "ChokyosiName": "調教師名",
+            "ChokyosiNameKana": "調教師名カナ",
+            "ChokyosiNameEng": "調教師名英字",
         },
     },
 }
@@ -110,6 +166,9 @@ def get_schema_description() -> dict:
         "usage_notes": [
             "レース検索は NL_RA_RACE テーブルを使用",
             "出馬表・レース結果は NL_SE_RACE_UMA テーブルを使用",
+            "馬情報は NL_UM_UMA テーブルを使用",
+            "騎手情報は NL_KS_KISYU テーブルを使用",
+            "調教師情報は NL_CH_CHOKYOSI テーブルを使用",
             "重要: NL_RA_RACE_UMAというテーブルは存在しません",
             "レースIDは複数カラムの組み合わせです",
             "KakuteiJyuniがNULLまたは空の場合はレース前データです",
@@ -117,6 +176,8 @@ def get_schema_description() -> dict:
         "important_notes": [
             "カラム名は日本語ローマ字表記（例: idYear, KakuteiJyuni）",
             "race_id, race_date のような英語カラム名は使用できません",
+            "血統情報: 父=Ketto3Info1Bamei, 母=Ketto3Info2Bamei, 母父=Ketto3Info5Bamei",
+            "FBamei, BokuroBamei, BBamei などのカラムは存在しません",
         ]
     }
 
@@ -136,5 +197,14 @@ WHERE ru.KisyuRyakusyo LIKE '%ルメール%'
   AND LENGTH(ru.KakuteiJyuni) > 0
 ORDER BY ru.idMonthDay DESC
 LIMIT 200
+        """,
+        "血統検索（父馬別）": """
+SELECT
+    u.Bamei,
+    u.Ketto3Info1Bamei as sire,
+    u.Ketto3Info2Bamei as dam
+FROM NL_UM_UMA u
+WHERE u.Ketto3Info1Bamei LIKE '%ディープインパクト%'
+LIMIT 100
         """,
     }
