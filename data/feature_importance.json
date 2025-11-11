@@ -208,7 +208,7 @@
     }
   ],
   "references": [
-    "TARGET frontier JV 使い方マニュアル",
+    "使い方マニュアル",
     "競馬予想で始める機械学習 (Zenn)",
     "LightGBMで競馬AIの簡単な実装 (Qiita)",
     "過去30年データを活用した予想方法 (moukaru-keiba.com)"

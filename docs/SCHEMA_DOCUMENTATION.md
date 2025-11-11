@@ -15,7 +15,7 @@ LLMがより正確にSQLクエリを生成できるように、データベー�
 MCPの `get_table_info()` ツールが以下の情報を返すように拡張：
 
 - **テーブル説明**: テーブルの目的と用途
-- **TARGET相当機能**: TARGET frontier JVでの対応画面
+- **TARGET相当機能**: での対応画面
 - **主キー情報**: テーブルの主キー
 - **カラム詳細**: 各カラムの名前、型、**説明**
 - **クエリヒント**: よく使うJOINパターンや条件の例
@@ -43,8 +43,7 @@ LLMは「idJyoCD」が何を意味するか推測するしかない → **誤っ
 {
   "table_name": "NL_RA_RACE",
   "table_description": "レース情報テーブル - 各レースの基本情報、条件、グレード等",
-  "target_equivalent": "TARGET frontier JVの「レース検索」画面に相当",
-  "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
+    "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
   "total_columns": 110,
   "columns": [
     {
@@ -182,5 +181,5 @@ WHERE idJyoCD = '05' AND GradeCD = 'A'
 ## 参考資料
 
 - JRA-VAN Data Lab: https://jra-van.jp/
-- TARGET frontier JV マニュアル
+- マニュアル
 - JVLink 仕様書

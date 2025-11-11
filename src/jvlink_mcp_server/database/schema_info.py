@@ -6,8 +6,7 @@
 JVLINK_TABLES = {
     "NL_RA_RACE": {
         "description": "レース情報テーブル",
-        "target_equivalent": "レース検索画面のデータソース",
-        "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
+                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
         "key_columns": {
             # レースID構成要素
             "idYear": "開催年 (例: 2024)",
@@ -32,8 +31,7 @@ JVLINK_TABLES = {
 
     "NL_SE_RACE_UMA": {
         "description": "出馬表・レース結果テーブル",
-        "target_equivalent": "出馬表画面・レース結果画面",
-        "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum", "Umaban"],
+                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum", "Umaban"],
         "key_columns": {
             # レースID構成要素
             "idYear": "開催年",
@@ -67,8 +65,7 @@ JVLINK_TABLES = {
 
     "NL_UM_UMA": {
         "description": "馬マスタテーブル",
-        "target_equivalent": "馬データ検索画面",
-        "primary_keys": ["KettoNum"],
+                "primary_keys": ["KettoNum"],
         "key_columns": {
             "KettoNum": "血統登録番号（馬の一意識別子）",
             "Bamei": "馬名",
@@ -95,8 +92,7 @@ JVLINK_TABLES = {
 
     "NL_KS_KISYU": {
         "description": "騎手マスタテーブル",
-        "target_equivalent": "騎手データ画面",
-        "primary_keys": ["KisyuCode"],
+                "primary_keys": ["KisyuCode"],
         "key_columns": {
             "KisyuCode": "騎手コード",
             "KisyuName": "騎手名",
@@ -107,8 +103,7 @@ JVLINK_TABLES = {
 
     "NL_CH_CHOKYOSI": {
         "description": "調教師マスタテーブル",
-        "target_equivalent": "調教師データ画面",
-        "primary_keys": ["ChokyosiCode"],
+                "primary_keys": ["ChokyosiCode"],
         "key_columns": {
             "ChokyosiCode": "調教師コード",
             "ChokyosiName": "調教師名",
@@ -182,8 +177,8 @@ def get_schema_description() -> dict:
     }
 
 
-def get_target_equivalent_query_examples() -> dict:
-    """TARGET frontier JV風のクエリ例"""
+def get_query_examples() -> dict:
+    """クエリ例"""
     return {
         "騎手成績": """
 SELECT

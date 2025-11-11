@@ -2,7 +2,7 @@
 """
 JVLink Database Query Pattern Tests
 
-TARGET frontier JVの典型的な検索パターンを網羅的にテストします。
+典型的な検索パターンを網羅的にテストします。
 """
 import sys
 import os
@@ -629,7 +629,7 @@ class QueryPatternTester:
         """全テストを実行"""
         print("\n" + "="*80)
         print("JVLink Database Query Pattern Tests")
-        print("TARGET frontier JV 網羅的クエリパターンテスト")
+        print("網羅的クエリパターンテスト")
         print("="*80)
 
         self.test_race_search_patterns()

@@ -10,28 +10,23 @@ from .schema_auto_descriptions import generate_column_description as auto_genera
 TABLE_DESCRIPTIONS = {
     "NL_RA_RACE": {
         "description": "レース情報テーブル - 各レースの基本情報、条件、グレード等",
-        "target_equivalent": "TARGET frontier JVの「レース検索」画面に相当",
-        "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
+                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
     },
     "NL_SE_RACE_UMA": {
         "description": "出馬表テーブル - レース出走前の馬情報、オッズ、枠番等",
-        "target_equivalent": "TARGET frontier JVの「出馬表」画面に相当",
-        "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum", "idUmaban"],
+                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum", "idUmaban"],
     },
     "NL_UM_UMA": {
         "description": "馬マスタテーブル - 馬の基本情報、血統、生産者等",
-        "target_equivalent": "TARGET frontier JVの「馬データ」画面に相当",
-        "primary_keys": ["KettoNum"],
+                "primary_keys": ["KettoNum"],
     },
     "NL_KS_KISYU": {
         "description": "騎手マスタテーブル - 騎手の基本情報",
-        "target_equivalent": "TARGET frontier JVの「騎手データ」画面に相当",
-        "primary_keys": ["KisyuCode"],
+                "primary_keys": ["KisyuCode"],
     },
     "NL_CH_CHOKYOSI": {
         "description": "調教師マスタテーブル - 調教師の基本情報",
-        "target_equivalent": "TARGET frontier JVの「調教師データ」画面に相当",
-        "primary_keys": ["ChokyosiCode"],
+                "primary_keys": ["ChokyosiCode"],
     },
 }
 
@@ -258,6 +253,5 @@ def get_table_description(table_name: str) -> dict:
     """
     return TABLE_DESCRIPTIONS.get(table_name, {
         "description": "（説明未登録）",
-        "target_equivalent": "N/A",
-        "primary_keys": [],
+                "primary_keys": [],
     })

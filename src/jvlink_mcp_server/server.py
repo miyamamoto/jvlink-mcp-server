@@ -1,4 +1,4 @@
-"""JVLink MCP Server - TARGET frontier JV風の競馬分析MCPサーバー"""
+"""JVLink MCP Server - 競馬分析MCPサーバー"""
 
 import os
 import json
@@ -109,7 +109,7 @@ def table_detail_resource(table_name: str) -> str:
 
 @mcp.resource("examples://queries")
 def query_examples_resource() -> str:
-    """TARGET frontier JV風のクエリ例集
+    """クエリ例集
 
     よく使うクエリパターンをサンプルとして提供
     """
@@ -153,14 +153,14 @@ def get_database_schema() -> dict:
     """データベーススキーマ情報を取得
 
     Returns:
-        テーブル一覧、カラム情報、TARGET frontier JVとの対応表
+        テーブル一覧、カラム情報、との対応表
     """
     return get_schema_description()
 
 
 @mcp.tool()
 def get_query_examples() -> dict:
-    """TARGET frontier JV風のクエリ例集を取得
+    """クエリ例集を取得
 
     Returns:
         よく使うクエリのサンプル集
@@ -226,7 +226,7 @@ def get_important_features() -> dict:
     """競馬予測で重要な特徴量の知見を提供
 
     Returns:
-        重要特徴量のリスト、説明、TARGET frontier JVでの活用方法
+        重要特徴量のリスト、説明、での活用方法
     """
     return {
         "features": FEATURE_IMPORTANCE_DATA["important_features"],

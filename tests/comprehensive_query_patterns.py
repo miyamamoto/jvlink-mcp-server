@@ -2,8 +2,8 @@
 """
 JVLink Database Comprehensive Query Pattern Tests
 
-TARGET frontier JVの148項目を網羅する包括的なクエリパターンテスト
-Based on official TARGET frontier JV FAQ (https://targetfaq.jra-van.jp/faq/?site=SVKNEGBV)
+148項目を網羅する包括的なクエリパターンテスト
+Based on official FAQ (https://targetfaq.jra-van.jp/faq/?site=SVKNEGBV)
 """
 import sys
 import os
@@ -17,7 +17,7 @@ from src.jvlink_mcp_server.database.schema_info import TRACK_CODES
 
 
 class ComprehensiveQueryTester:
-    """TARGET frontier JV 148項目網羅テスト"""
+    """148項目網羅テスト"""
 
     def __init__(self):
         self.db = DatabaseConnection()
@@ -922,7 +922,7 @@ class ComprehensiveQueryTester:
     def run_all_tests(self):
         """全テストを実行"""
         print("\n" + "="*90)
-        print("TARGET frontier JV 網羅的クエリパターンテスト")
+        print("網羅的クエリパターンテスト")
         print("全148項目の主要パターンを網羅")
         print("="*90)
 
