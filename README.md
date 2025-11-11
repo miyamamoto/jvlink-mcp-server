@@ -1,56 +1,50 @@
 # JVLink MCP Server
 
-TARGET frontier JV風の競馬分析MCPサーバー
+JVLinkToSQLiteで作成した競馬データベースにアクセスするためのMCPサーバー
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.11+-green.svg)](https://www.python.org/)
 
-## 概要
+## 前提条件
 
-JVLink MCP Serverは、JVLinkToSQLiteで作成した競馬データベースにアクセスするためのModel Context Protocol (MCP)サーバーです。
+- **JVLinkToSQLiteで作成したデータベース**（必須）
+  - 公式版: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
+  - 拡張版: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+- 対応DB: SQLite（デフォルト）、DuckDB、PostgreSQL
 
-**デフォルトデータベース**: SQLite（標準的、互換性が高い）
+## インストール
 
-### サポートデータベース
-
-- ✅ **SQLite** - 標準的、設定不要、単一ファイル
-- ✅ **DuckDB** - 分析クエリが高速（集計・GROUP BYが2-10倍高速）
-- ✅ **PostgreSQL** - 本格的なRDBMS、複数ユーザー対応
-
-### JVLinkToSQLiteについて
-
-データベースの作成には以下のいずれかを使用してください：
-
-- **公式版** (SQLiteのみ): [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
-- **拡張版** (SQLite/DuckDB/PostgreSQL対応): [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
-
-## データベースセットアップ
-
-### ステップ1: JVLinkToSQLiteでSQLite作成
+### 方法1: ローカル環境
 
 ```bash
-# SQLite形式で競馬データをインポート
-JVLinkToSQLite.exe --datasource race.db --mode Exec
-```
+# リポジトリをクローン
+git clone https://github.com/miyamamoto/jvlink-mcp-server.git
+cd jvlink-mcp-server
 
-### ステップ2: 環境変数設定
+# 環境変数を設定
+export DB_TYPE=sqlite
+export DB_PATH=~/JVData/race.db
 
-`.env` ファイルを作成：
-
-```bash
-DB_TYPE=sqlite
-DB_PATH=C:/Users/<username>/JVData/race.db
-```
-
-### ステップ3: 接続テスト
-
-```bash
+# 接続テスト
 uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db = DatabaseConnection(); print(db.get_tables())"
 ```
 
-## 使用方法
+### 方法2: Docker（推奨）
 
-### Claude Desktopで使用
+```bash
+# JVDataディレクトリを指定
+export JVDATA_DIR=~/JVData
+
+# イメージをビルドして起動
+docker compose build
+docker compose up jvlink-sqlite
+```
+
+アクセス: `http://localhost:8000/sse`
+
+## Claude Desktopで使う
+
+`claude_desktop_config.json` に以下を追加：
 
 ```json
 {
@@ -74,37 +68,16 @@ uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db 
 }
 ```
 
-## データベース互換性
+## よくある質問
 
-SQLite、DuckDB、PostgreSQLの3種類に対応しています。
+**Q: データベースはどこで作る？**
+A: JVLinkToSQLiteで作成してください。他のツールで作成したDBには対応していません。
 
-- SQLite: デフォルト、設定不要、初心者向け
-- DuckDB: 分析クエリが高速（集計・GROUP BYが2-10倍高速）
-- PostgreSQL: 本格運用、複数ユーザー対応
+**Q: DuckDBを使いたい**
+A: 拡張版JVLinkToSQLiteでDBを作成し、`DB_TYPE=duckdb` に設定してください。
 
-詳細は [DB_COMPATIBILITY.md](DB_COMPATIBILITY.md) を参照してください。
-
-## Docker サポート
-
-Dockerで簡単にデプロイできます：
-
-```bash
-# JVDataディレクトリを環境変数で指定
-export JVDATA_DIR=C:/Users/<username>/JVData  # Windows
-export JVDATA_DIR=~/JVData                     # Linux/Mac
-
-# Dockerイメージをビルド
-docker compose build
-
-# サーバーを起動（JVLinkToSQLiteのDBを直接マウント）
-docker compose up jvlink-sqlite
-```
-
-アクセス: `http://localhost:8000/sse`
-
-**注意**: JVLinkToSQLiteで作成したデータベースのみ対応しています。
-
-詳細は [DOCKER_SETUP.md](DOCKER_SETUP.md) を参照してください。
+**Q: データが更新されない**
+A: Dockerを使っている場合、`JVDATA_DIR`環境変数でJVLinkToSQLiteのディレクトリを直接マウントしてください。リアルタイムで反映されます。
 
 ## ライセンス
 
