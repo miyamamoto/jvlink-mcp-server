@@ -4,6 +4,8 @@
 
 - Docker Desktop または Docker Engine
 - JVLinkToSQLiteで作成したデータベース
+  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
+  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
 
 ## クイックスタート
 

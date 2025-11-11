@@ -1,5 +1,11 @@
 # Claude Desktop セットアップ
 
+## 前提条件
+
+- JVLinkToSQLiteで作成したデータベース
+  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
+  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+
 ## 設定ファイルの場所
 
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
