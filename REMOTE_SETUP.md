@@ -1,4 +1,4 @@
-# リモート接続セットアップ
+# 接続セットアップ
 
 ## 前提条件
 
@@ -6,48 +6,26 @@
   - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
   - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
 
-## ローカル接続（stdio）
+## 標準接続（API経由）
 
-Claude Desktopが自動起動します。設定不要。
+### 1. サーバー起動
 
-`claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "jvlink": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/Users/<username>/jvlink-mcp-server",
-        "run",
-        "python",
-        "-m",
-        "jvlink_mcp_server.server"
-      ],
-      "env": {
-        "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/<username>/JVData/race.db"
-      }
-    }
-  }
-}
-```
-
-## リモート接続（SSE）
-
-### サーバー起動
-
+**Docker（推奨）:**
 ```bash
-# ローカル環境
-cd /path/to/jvlink-mcp-server
-uv run python -m jvlink_mcp_server.server_sse
-
-# Docker（推奨）
 export JVDATA_DIR=~/JVData
 docker compose up jvlink-sqlite
 ```
 
-### Claude Desktop設定
+**ローカル環境:**
+```bash
+export DB_TYPE=sqlite
+export DB_PATH=~/JVData/race.db
+uv run python -m jvlink_mcp_server.server_sse
+```
+
+### 2. Claude Desktop設定
+
+`claude_desktop_config.json` に追加：
 
 ```json
 {
@@ -60,6 +38,20 @@ docker compose up jvlink-sqlite
 ```
 
 Claude Desktopを再起動してください。
+
+## リモート接続
+
+リモートサーバーで起動する場合、ホスト名を変更してください：
+
+```json
+{
+  "mcpServers": {
+    "jvlink": {
+      "url": "http://your-server-ip:8000/sse"
+    }
+  }
+}
+```
 
 ## セキュリティ注意
 

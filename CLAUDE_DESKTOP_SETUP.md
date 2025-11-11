@@ -14,54 +14,48 @@
 
 ファイルが存在しない場合は新規作成してください。
 
-## 基本設定
+## セットアップ手順
 
-### SQLite（デフォルト）
+### 1. サーバー起動
 
-```json
-{
-  "mcpServers": {
-    "jvlink": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/Users/<username>/jvlink-mcp-server",
-        "run",
-        "python",
-        "-m",
-        "jvlink_mcp_server.server"
-      ],
-      "env": {
-        "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/<username>/JVData/race.db"
-      }
-    }
-  }
-}
+#### Docker（推奨）
+
+**SQLite:**
+```bash
+export JVDATA_DIR=~/JVData
+docker compose up jvlink-sqlite
 ```
 
-### DuckDB
-
-`DB_TYPE` と `DB_PATH` を変更：
-
-```json
-"env": {
-  "DB_TYPE": "duckdb",
-  "DB_PATH": "C:/Users/<username>/JVData/race.duckdb"
-}
+**DuckDB:**
+```bash
+export JVDATA_DIR=~/JVData
+docker compose --profile duckdb up jvlink-duckdb
 ```
 
-### PostgreSQL
-
-```json
-"env": {
-  "DB_TYPE": "postgresql",
-  "DB_CONNECTION_STRING": "Host=localhost;Database=jvlink;Username=jvlink_user",
-  "JVLINK_DB_PASSWORD": "your_password"
-}
+**PostgreSQL:**
+```bash
+docker compose --profile postgresql up
 ```
 
-## Dockerを使う場合
+#### ローカル環境
+
+**SQLite:**
+```bash
+export DB_TYPE=sqlite
+export DB_PATH=~/JVData/race.db
+uv run python -m jvlink_mcp_server.server_sse
+```
+
+**DuckDB:**
+```bash
+export DB_TYPE=duckdb
+export DB_PATH=~/JVData/race.duckdb
+uv run python -m jvlink_mcp_server.server_sse
+```
+
+### 2. Claude Desktop設定
+
+`claude_desktop_config.json` に以下を追加：
 
 ```json
 {
@@ -73,7 +67,27 @@
 }
 ```
 
-Dockerコンテナを起動してから使用してください。
+**DuckDBの場合:** ポート8001
+```json
+{
+  "mcpServers": {
+    "jvlink": {
+      "url": "http://localhost:8001/sse"
+    }
+  }
+}
+```
+
+**PostgreSQLの場合:** ポート8002
+```json
+{
+  "mcpServers": {
+    "jvlink": {
+      "url": "http://localhost:8002/sse"
+    }
+  }
+}
+```
 
 ## 確認
 

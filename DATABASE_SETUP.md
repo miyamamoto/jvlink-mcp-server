@@ -57,25 +57,30 @@ docker compose up jvlink-sqlite
 
 ## Claude Desktopで使う
 
+### 1. サーバー起動
+
+**Docker（推奨）:**
+```bash
+export JVDATA_DIR=~/JVData
+docker compose up jvlink-sqlite
+```
+
+**ローカル環境:**
+```bash
+export DB_TYPE=sqlite
+export DB_PATH=~/JVData/race.db
+uv run python -m jvlink_mcp_server.server_sse
+```
+
+### 2. Claude Desktopに接続
+
 `%APPDATA%\Claude\claude_desktop_config.json` に追加：
 
 ```json
 {
   "mcpServers": {
     "jvlink": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/Users/<username>/jvlink-mcp-server",
-        "run",
-        "python",
-        "-m",
-        "jvlink_mcp_server.server"
-      ],
-      "env": {
-        "DB_TYPE": "sqlite",
-        "DB_PATH": "C:/Users/<username>/JVData/race.db"
-      }
+      "url": "http://localhost:8000/sse"
     }
   }
 }

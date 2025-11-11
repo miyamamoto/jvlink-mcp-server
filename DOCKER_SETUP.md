@@ -9,21 +9,39 @@
 
 ## クイックスタート
 
+### 1. サーバー起動
+
 ```bash
-# 1. JVDataディレクトリを環境変数で指定
+# JVDataディレクトリを環境変数で指定
 export JVDATA_DIR=~/JVData                        # Linux/Mac
 set JVDATA_DIR=C:\Users\<username>\JVData         # Windows
 
-# 2. イメージをビルド
+# イメージをビルド
 docker compose build
 
-# 3. 起動
+# サーバー起動
 docker compose up jvlink-sqlite
 ```
 
-アクセス: `http://localhost:8000/sse`
+サーバーが起動したら `http://localhost:8000/sse` でアクセスできます。
 
 **重要**: `JVDATA_DIR` にJVLinkToSQLiteが管理するディレクトリを指定してください。JVLinkToSQLiteでデータを更新すると即座に反映されます。
+
+### 2. Claude Desktopに接続
+
+`claude_desktop_config.json` に以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "jvlink": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+Claude Desktopを再起動してください。
 
 ## イメージ
 
