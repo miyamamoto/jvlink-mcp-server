@@ -32,8 +32,120 @@ with open(DATA_DIR / "feature_importance.json", "r", encoding="utf-8") as f:
     FEATURE_IMPORTANCE_DATA = json.load(f)
 
 
+
 # ============================================================================
-# データベーススキーマ情報
+# Resources: Claude Desktopが接続時に自動的に読み込む情報
+# ============================================================================
+
+@mcp.resource("schema://database")
+def database_schema_resource() -> str:
+    """データベース全体のスキーマ情報
+
+    接続時に自動的に読み込まれ、Claudeが最初からテーブル構造を理解できます
+    """
+    schema_info = get_schema_description()
+    return json.dumps(schema_info, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("schema://tables")
+def tables_list_resource() -> str:
+    """テーブル一覧と説明
+
+    全テーブルの概要を提供し、どのテーブルを使うべきか判断しやすくします
+    """
+    with DatabaseConnection() as db:
+        tables = db.get_tables()
+
+    tables_info = []
+    for table in tables:
+        desc = get_table_description(table)
+        tables_info.append({
+            "table_name": table,
+            "description": desc.get("description", ""),
+            "target_equivalent": desc.get("target_equivalent", ""),
+            "primary_keys": desc.get("primary_keys", [])
+        })
+
+    return json.dumps({"tables": tables_info, "total": len(tables_info)}, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("schema://table/{table_name}")
+def table_detail_resource(table_name: str) -> str:
+    """個別テーブルの詳細情報（動的リソース）
+
+    Args:
+        table_name: テーブル名
+
+    Returns:
+        テーブルのカラム情報、説明、クエリヒント
+    """
+    with DatabaseConnection() as db:
+        schema_df = db.get_table_schema(table_name)
+
+        columns_with_desc = []
+        for _, row in schema_df.iterrows():
+            col_name = row["column_name"]
+            col_info = {
+                "name": col_name,
+                "type": row["column_type"],
+                "description": get_column_description(table_name, col_name)
+            }
+            columns_with_desc.append(col_info)
+
+        table_desc = get_table_description(table_name)
+
+        info = {
+            "table_name": table_name,
+            "table_description": table_desc.get("description", ""),
+            "target_equivalent": table_desc.get("target_equivalent", ""),
+            "primary_keys": table_desc.get("primary_keys", []),
+            "total_columns": len(columns_with_desc),
+            "columns": columns_with_desc,
+            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA_RACE", "NL_SE_RACE_UMA"] else ""
+        }
+
+        return json.dumps(info, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("examples://queries")
+def query_examples_resource() -> str:
+    """TARGET frontier JV風のクエリ例集
+
+    よく使うクエリパターンをサンプルとして提供
+    """
+    examples = get_target_equivalent_query_examples()
+    return json.dumps(examples, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("knowledge://features")
+def feature_knowledge_resource() -> str:
+    """競馬予測で重要な特徴量の知見
+
+    機械学習モデルで重要とされる特徴量とその活用方法
+    """
+    return json.dumps(FEATURE_IMPORTANCE_DATA, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("codes://tracks")
+def track_codes_resource() -> str:
+    """競馬場コード一覧
+
+    JVLinkで使用される競馬場コードのマスタデータ
+    """
+    return json.dumps(TRACK_CODES, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("codes://grades")
+def grade_codes_resource() -> str:
+    """グレードコード一覧
+
+    レースグレード（G1, G2, G3等）のコード表
+    """
+    return json.dumps(GRADE_CODES, ensure_ascii=False, indent=2)
+
+
+# ============================================================================
+# データベーススキーマ情報（ツール版 - 後方互換性のため残す）
 # ============================================================================
 
 @mcp.tool()
