@@ -83,6 +83,17 @@ uv run python -m jvlink_mcp_server.server_sse
 
 Claude Desktopを再起動してください。
 
+## ドキュメント
+
+- [データベースセットアップ](docs/DATABASE_SETUP.md)
+- [Docker セットアップ](docs/DOCKER_SETUP.md)
+- [Claude Desktop セットアップ](docs/CLAUDE_DESKTOP_SETUP.md)
+- [接続セットアップ](docs/REMOTE_SETUP.md)
+- [データベース互換性](docs/DB_COMPATIBILITY.md)
+- [サンプル質問](docs/SAMPLE_QUESTIONS.md)
+- [スキーマドキュメント](docs/SCHEMA_DOCUMENTATION.md)
+- [スキーマカバレッジレポート](docs/SCHEMA_COVERAGE_REPORT.md)
+
 ## よくある質問
 
 **Q: データベースはどこで作る？**
