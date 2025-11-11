@@ -27,6 +27,24 @@ docker compose up jvlink-sqlite
 
 **重要**: `JVDATA_DIR` にJVLinkToSQLiteが管理するディレクトリを指定してください。JVLinkToSQLiteでデータを更新すると即座に反映されます。
 
+### JVDataディレクトリの内容
+
+JVLinkToSQLiteが作成したデータベースファイルが格納されます：
+
+```
+~/JVData/
+├── race.db              # SQLiteデータベース
+├── race.duckdb          # DuckDBデータベース（拡張版のみ）
+└── (設定・一時ファイル)
+```
+
+**データベースの内容:**
+- レース情報、馬情報、成績、騎手・調教師情報など
+- 約22テーブル
+- サイズ: 2GB〜50GB（取得期間により変動）
+
+詳細は [DATABASE_SETUP.md](DATABASE_SETUP.md) を参照してください。
+
 ### 2. Claude Desktopに接続
 
 `claude_desktop_config.json` に以下を追加：

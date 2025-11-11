@@ -12,6 +12,13 @@ JVLinkToSQLiteで作成した競馬データベースにアクセスするため
   - 拡張版: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
 - 対応DB: SQLite（デフォルト）、DuckDB、PostgreSQL
 
+### データベースに含まれるもの
+- レース情報（開催日、競馬場、距離、馬場状態）
+- 馬情報（馬名、血統、生年月日）
+- 成績情報（着順、タイム、オッズ、人気）
+- 騎手・調教師情報
+- 約22テーブル、2GB〜50GB
+
 ## インストール
 
 ### 方法1: ローカル環境
