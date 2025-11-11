@@ -52,12 +52,12 @@ COLUMN_DESCRIPTIONS = {
         "JyokenInfoSyubetuCD": "競走種別コード（11=芝, 21=ダート, 23=障害芝, 24=障害ダート）",
         "JyokenInfoKigoCD": "競走記号コード（000=平地, 051=障害など）",
         "JyokenInfoJyuryoCD": "重量種別コード（1=ハンデ, 2=別定, 3=馬齢, 4=定量）",
-        "TrackInfoKyori": "距離（メートル単位、例：1600）",
-        "TrackInfoTrackCD": "トラックコード（10=芝・右, 11=芝・左, 18=芝・直, 20=ダート・右, etc.）",
+        "Kyori": "距離（メートル単位、例：1600）",
+        "TrackCD": "トラックコード（10=芝・右, 11=芝・左, 18=芝・直, 20=ダート・右, etc.）",
         "TrackInfoKaisaiKubunCD": "開催区分コード（通常/冬季）",
-        "TenkoCD": "天候コード（1=晴, 2=曇, 3=雨, 4=小雨, etc.）",
-        "SibaBabaCD": "芝馬場状態コード（1=良, 2=稍重, 3=重, 4=不良）",
-        "DirtBabaCD": "ダート馬場状態コード（1=良, 2=稍重, 3=重, 4=不良）",
+        "TenkoBabaTenkoCD": "天候コード（1=晴, 2=曇, 3=雨, 4=小雨, etc.）",
+        "TenkoBabaSibaBabaCD": "芝馬場状態コード（1=良, 2=稍重, 3=重, 4=不良）",
+        "TenkoBabaDirtBabaCD": "ダート馬場状態コード（1=良, 2=稍重, 3=重, 4=不良）",
         "HassoTime": "発走時刻（HHmm形式）",
         "TorokiTosu": "登録頭数",
         "SyussoTosu": "出走頭数",
@@ -212,10 +212,10 @@ JOIN NL_KS_KISYU k ON s.KisyuCode = k.KisyuCode
 
 ### よくある条件
 
-- **東京競馬場の芝1600m**: `idJyoCD = '05' AND TrackInfoKyori = 1600 AND JyokenInfoSyubetuCD = '11'`
+- **東京競馬場の芝1600m**: `idJyoCD = '05' AND Kyori = 1600 AND JyokenInfoSyubetuCD = '11'`
 - **G1レース**: `GradeCD = 'A'`
 - **1番人気**: `Ninki = 1`
-- **良馬場**: `SibaBabaCD = '1'`
+- **良馬場（芝）**: `TenkoBabaSibaBabaCD = '1'`
 - **過去3年**: `idYear >= strftime('%Y', date('now', '-3 years'))`
 
 ### 注意事項

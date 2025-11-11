@@ -3,7 +3,11 @@
 import os
 import sqlite3
 from typing import Any, Optional
+import warnings
 import pandas as pd
+
+# Suppress pandas DuckDB connection warning
+warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy')
 
 
 class DatabaseConnection:
