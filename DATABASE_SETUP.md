@@ -18,6 +18,10 @@ git clone https://github.com/urasandesu/JVLinkToSQLite.git
 git clone https://github.com/miyamamoto/JVLinkToSQLite.git
 ```
 
+**どちらを使う？**
+- SQLiteのみ使用 → 公式版でOK
+- **DuckDBやPostgreSQLを使いたい → 拡張版が必要**
+
 ビルド方法は各リポジトリのREADMEを参照してください。
 
 ## データベース作成

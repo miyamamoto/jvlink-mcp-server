@@ -8,8 +8,9 @@ JVLinkToSQLiteで作成した競馬データベースにアクセスするため
 ## 前提条件
 
 - **JVLinkToSQLiteで作成したデータベース**（必須）
-  - 公式版: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
-  - 拡張版: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
+  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+  - **注意**: DuckDBやPostgreSQLを使いたい場合は拡張版が必要です
 - 対応DB: SQLite（デフォルト）、DuckDB、PostgreSQL
 
 ### データベースに含まれるもの

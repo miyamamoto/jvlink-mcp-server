@@ -5,6 +5,7 @@
 - JVLinkToSQLiteで作成したデータベース
   - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
   - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
+  - **注意**: DuckDBやPostgreSQLを使いたい場合は拡張版が必要です
 
 ## 設定ファイルの場所
 
