@@ -12,9 +12,9 @@ _sample_data_cache: Dict[str, Any] = {}
 IMPORTANT_COLUMNS = {
     "NL_SE": [
         "Year", "MonthDay", "JyoCD", "RaceNum", "Umaban", "Wakuban",
-        "Bamei", "KisyuRyakusyo", "KakuteiJyuni", "Ninki", "Odds",
+        "KettoNum", "Bamei", "KisyuRyakusyo", "KakuteiJyuni", "Ninki", "Odds",
         "BaTaijyu", "HaronTimeL3", "Time"
-        # 注意: Bamei1/2/3は馬名ではなくIDを含むため除外
+        # 血統情報はNL_UMとKettoNumでJOINして取得
     ],
     "NL_RA": [
         "Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum",
@@ -211,6 +211,7 @@ def _get_column_info(table_name: str) -> Dict[str, str]:
 
     column_info = {
         "NL_SE": {
+            "KettoNum": "血統登録番号（NL_UMとJOINするためのキー）",
             "KakuteiJyuni": "確定着順。01=1着, 02=2着...（ゼロパディング2桁）",
             "Ninki": "人気順位。01=1番人気, 02=2番人気...（ゼロパディング2桁）",
             "JyoCD": "競馬場コード。01=札幌, 05=東京, 06=中山...（ゼロパディング2桁）",
@@ -219,9 +220,6 @@ def _get_column_info(table_name: str) -> Dict[str, str]:
             "Odds": "単勝オッズ",
             "BaTaijyu": "馬体重（kg）",
             "HaronTimeL3": "上がり3Fタイム（0.1秒単位、例: 334=33.4秒）",
-            "Bamei1": "父馬名",
-            "Bamei2": "母馬名",
-            "Bamei3": "母父馬名",
         },
         "NL_RA": {
             "Year": "開催年（YYYY）",

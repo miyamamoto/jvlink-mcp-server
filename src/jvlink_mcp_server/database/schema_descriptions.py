@@ -17,8 +17,8 @@ TABLE_DESCRIPTIONS = {
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
     },
     "NL_UM": {
-        "description": "馬マスタテーブル - 馬の基本情報、血統、生産者等（注意: データパース不整合の可能性あり）",
-        "primary_keys": [],  # 注意: KettoNumカラムは実際には存在しない
+        "description": "馬マスタテーブル - 馬の基本情報、血統情報、生産者等。NL_SE.KettoNumでJOIN可能",
+        "primary_keys": ["KettoNum"],
     },
     "NL_KS": {
         "description": "騎手マスタテーブル - 騎手の基本情報",
@@ -89,9 +89,8 @@ COLUMN_DESCRIPTIONS = {
         "Jyuni3c": "3コーナー通過順位",
         "Jyuni4c": "4コーナー通過順位",
         "BaTaijyu": "馬体重（kg）",
-        "Bamei1": "父馬ID（血統登録番号形式、例:'2021103912'）- 馬名ではなくIDが格納されている",
-        "Bamei2": "母馬ID（血統登録番号形式）- 現状'0000'等のダミー値が多い",
-        "Bamei3": "母父馬ID（血統登録番号形式）- 現状'0'等のダミー値が多い",
+        "Bamei1": "⚠️注意: 父馬名ではない。KettoNum1が参照する馬の名前が入っている。血統情報はNL_UMテーブルを使用すること",
+        # Bamei2, Bamei3 カラムは実際には存在しない
     },
 
     # === NL_UM (馬マスタ) ===
@@ -208,12 +207,41 @@ JOIN NL_KS k ON s.KisyuCode = k.KisyuCode
 - 距離もTEXT型（'1600', '2000'など）
 - 着順0は「着外」「取消」「除外」を意味します
 
-### データ品質に関する注意
+### 血統情報の取得方法
 
-- **NL_SE.Bamei1/2/3**: 馬名ではなくID（血統登録番号）が格納されています
-- **NL_UM**: KettoNumカラムが存在せず、データのパースに問題がある可能性があります
-- **血統分析**: NL_SEのBamei1/2/3とNL_UMの結合は現状困難です
-- **種牡馬成績**: NL_SEのBamei1（父馬ID）でGROUP BYして分析可能ですが、馬名は取得できません
+血統情報（父馬名、母馬名等）を取得するには、NL_UMテーブルとJOINします：
+
+```sql
+SELECT 
+    s.Bamei as 馬名,
+    u.Ketto3InfoBamei1 as 父馬名,
+    u.Ketto3InfoBamei2 as 母馬名,
+    u.Ketto3InfoBamei5 as 母父馬名
+FROM NL_SE s
+LEFT JOIN NL_UM u ON s.KettoNum = u.KettoNum
+WHERE s.KakuteiJyuni IS NOT NULL
+```
+
+### 種牡馬成績分析
+
+```sql
+SELECT 
+    u.Ketto3InfoBamei1 as 種牡馬,
+    COUNT(*) as 出走数,
+    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as 勝利数,
+    ROUND(SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
+FROM NL_SE s
+JOIN NL_UM u ON s.KettoNum = u.KettoNum
+WHERE s.KakuteiJyuni IS NOT NULL AND s.KakuteiJyuni != ''
+GROUP BY u.Ketto3InfoBamei1
+HAVING COUNT(*) >= 100
+ORDER BY 勝利数 DESC
+```
+
+### 注意事項（NL_SE）
+
+- **Bamei1カラム**: 父馬名ではありません。血統情報はNL_UMテーブルを使用してください
+- **Bamei2/Bamei3**: これらのカラムは存在しません
 """
 
 

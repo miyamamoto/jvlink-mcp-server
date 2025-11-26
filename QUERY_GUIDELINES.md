@@ -216,39 +216,48 @@ ORDER BY se.Wakuban
 | `KakuteiJyuni = '1'` | `KakuteiJyuni = '01'` | 2桁ゼロ埋め |
 | `Ketto3Info1Bamei` | `Ketto3InfoBamei1` | カラム名変更 |
 
-## ⚠️ データ品質に関する重要な注意点
+## 血統情報の取得方法
 
-### NL_SE.Bamei1/2/3 カラムについて
+### NL_SEとNL_UMのJOIN
 
-これらのカラムは**馬名ではなくID（血統登録番号形式）**を含んでいます。
-
-```
-実際のデータ例:
-- Bamei1: "2021103912" (父馬ID)
-- Bamei2: "0000" (母馬ID - ダミー値が多い)
-- Bamei3: "0" (母父馬ID - ダミー値が多い)
-```
-
-**血統分析を行う場合の代替方法**:
+血統情報（父馬名、母馬名等）を取得するには、NL_UMテーブルとKettoNumでJOINします：
 
 ```sql
--- 父馬ID別の成績集計（馬名は取得できない）
-SELECT
-    Bamei1 as sire_id,
-    COUNT(*) as total,
-    SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins
-FROM NL_SE
-WHERE Bamei1 IS NOT NULL AND Bamei1 != '0000000000'
-GROUP BY Bamei1
-HAVING COUNT(*) >= 50
-ORDER BY wins DESC
+SELECT 
+    s.Bamei as 馬名,
+    u.Ketto3InfoBamei1 as 父馬名,
+    u.Ketto3InfoBamei2 as 母馬名,
+    u.Ketto3InfoBamei5 as 母父馬名
+FROM NL_SE s
+LEFT JOIN NL_UM u ON s.KettoNum = u.KettoNum
+WHERE s.KakuteiJyuni IS NOT NULL
 ```
 
-### NL_UMテーブルについて
+**マッチング率**: 約85.5%（67,245 / 78,605件）
 
-NL_UMテーブルは**データのパース不整合**の可能性があります。
-- KettoNumカラムが実際のスキーマに存在しない
-- NL_SEとのJOINは現状困難
+### 種牡馬成績分析
+
+```sql
+SELECT 
+    u.Ketto3InfoBamei1 as 種牡馬,
+    COUNT(*) as 出走数,
+    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as 勝利数,
+    ROUND(SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
+FROM NL_SE s
+JOIN NL_UM u ON s.KettoNum = u.KettoNum
+WHERE s.KakuteiJyuni IS NOT NULL AND s.KakuteiJyuni != ''
+GROUP BY u.Ketto3InfoBamei1
+HAVING COUNT(*) >= 100
+ORDER BY 勝利数 DESC
+LIMIT 20
+```
+
+### ⚠️ NL_SE.Bamei1カラムについて
+
+**注意**: NL_SE.Bamei1カラムは**父馬名ではありません**。
+- Bamei1にはKettoNum1が参照する馬の名前が入っています（父馬ではない）
+- **Bamei2, Bamei3カラムは存在しません**
+- 血統情報は必ずNL_UMテーブルを使用してください
 
 ## データ型について
 
@@ -277,5 +286,5 @@ FROM NL_RA
 
 ---
 
-**作成日**: 2025-11-26
+**作成日**: 2025-11-27
 **対象DB**: jrvltsql (keiba.db)

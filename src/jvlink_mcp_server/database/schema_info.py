@@ -19,9 +19,10 @@ JVLINK_TABLES = {
         },
     },
     "NL_SE": {
-        "description": "出馬表・レース結果テーブル",
+        "description": "出馬表・レース結果テーブル。血統情報はNL_UMとKettoNumでJOINして取得",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
         "key_columns": {
+            "KettoNum": "血統登録番号（NL_UMとJOINするためのキー）",
             "Umaban": "馬番（01-18、ゼロパディング）",
             "Wakuban": "枠番（1-8）",
             "Bamei": "馬名",
@@ -31,9 +32,7 @@ JVLINK_TABLES = {
             "Odds": "単勝オッズ",
             "HaronTimeL3": "上がり3F（0.1秒単位、例: 334=33.4秒）",
             "BaTaijyu": "馬体重",
-            "Bamei1": "父馬名",
-            "Bamei2": "母馬名",
-            "Bamei3": "母父馬名",
+            # 注意: Bamei1は父馬名ではない。Bamei2/3は存在しない。血統情報はNL_UMを使用
         },
     },
     "NL_UM": {"description": "馬マスタ", "primary_keys": ["KettoNum"], "key_columns": {"Bamei": "馬名", "Ketto3InfoBamei1": "父馬名", "Ketto3InfoBamei2": "母馬名", "Ketto3InfoBamei5": "母父馬名"}},
@@ -53,7 +52,13 @@ def get_schema_description():
     return {"tables": JVLINK_TABLES, "track_codes": TRACK_CODES, "grade_codes": GRADE_CODES, "important_notes": ["★重要: KakuteiJyuni(着順)とNinki(人気)はゼロパディング2桁（01,02...）", "★重要: JyoCD(競馬場)もゼロパディング（05=東京）", "すべてのカラムはTEXT型"]}
 
 def get_query_examples():
-    return {"1番人気勝率": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE Ninki = "01" AND KakuteiJyuni IS NOT NULL", "騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20", "東京1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE JyoCD = "05" AND Ninki = "01" AND KakuteiJyuni IS NOT NULL", "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY Wakuban ORDER BY Wakuban"}
+    return {
+        "1番人気勝率": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE Ninki = '01' AND KakuteiJyuni IS NOT NULL",
+        "騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20",
+        "東京1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE JyoCD = '05' AND Ninki = '01' AND KakuteiJyuni IS NOT NULL",
+        "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY Wakuban ORDER BY Wakuban",
+        "種牡馬成績": "SELECT u.Ketto3InfoBamei1 as sire, COUNT(*) as runs, SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum = u.KettoNum WHERE s.KakuteiJyuni IS NOT NULL GROUP BY u.Ketto3InfoBamei1 HAVING COUNT(*) >= 100 ORDER BY wins DESC LIMIT 20",
+    }
 
 def get_target_equivalent_query_examples():
     return get_query_examples()
