@@ -1,7 +1,7 @@
 [project]
 name = "jvlink-mcp-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "JVLink MCP Server - 競馬データ分析MCPサーバー"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,5 +11,13 @@ dependencies = [
     "mcp[cli]>=1.21.0",
     "pandas>=2.3.3",
     "psycopg2-binary>=2.9.11",
+    "python-dotenv>=1.0.0",
     "seaborn>=0.13.2",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jvlink_mcp_server"]

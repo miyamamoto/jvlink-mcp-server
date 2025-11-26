@@ -151,7 +151,7 @@ class QueryCorrector:
         # 各カラムについてゼロパディング不足をチェック
         for column_name, padding_length in self.ZERO_PADDING_COLUMNS.items():
             # = 形式のチェック
-            pattern_equal = rf"{column_name}\s*=\s*'(\d{{1,{padding_length-1}}}})'"
+            pattern_equal = rf"{column_name}\s*=\s*'(\d{{1,{padding_length-1}}})'"
             matches = re.findall(pattern_equal, sql, re.IGNORECASE)
             for match in matches:
                 warnings.append(
