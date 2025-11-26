@@ -5,6 +5,15 @@ jrvltsqlで作成した競馬データベースにアクセスするためのMCP
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.11+-green.svg)](https://www.python.org/)
 
+## 主な機能
+
+- Claude Desktop / Claude Code からSQLクエリ実行
+- NL_SE + NL_UM のJOIN対応（85.5%マッチ率）で血統情報取得
+- クエリ自動修正機能（ゼロパディング対応）
+- 高レベルAPI（人気別成績、騎手成績、種牡馬分析等）
+- クエリテンプレート機能
+- 自然言語からSQL生成（実験的）
+
 ## 前提条件
 
 - **jrvltsqlで作成したデータベース**（必須）
@@ -24,7 +33,7 @@ jrvltsqlで作成した競馬データベースにアクセスするためのMCP
 |---------|------|
 | NL_RA | レース情報 |
 | NL_SE | 出馬表・レース結果 |
-| NL_UM | 馬マスタ |
+| NL_UM | 馬マスタ（血統情報：父馬名、母馬名、母父馬名等） |
 | NL_KS | 騎手マスタ |
 | NL_CH | 調教師マスタ |
 | NL_HR | 払戻情報 |
@@ -114,15 +123,37 @@ ORDER BY se.Year DESC, se.MonthDay DESC
 LIMIT 200
 ```
 
-### レース結果詳細
+### レース結果詳細（血統情報含む）
 ```sql
-SELECT ra.Hondai, se.Umaban, se.Bamei, se.KisyuRyakusyo, se.KakuteiJyuni, se.Odds
+SELECT ra.Hondai, se.Umaban, se.Bamei, se.KisyuRyakusyo, se.KakuteiJyuni, se.Odds,
+       um.Ketto3InfoHansyokuF1Name AS 父馬名,
+       um.Ketto3InfoHansyokuM1Name AS 母馬名,
+       um.Ketto3InfoHansyokuF2Name AS 母父馬名
 FROM NL_RA ra
 JOIN NL_SE se ON ra.Year = se.Year AND ra.MonthDay = se.MonthDay
   AND ra.JyoCD = se.JyoCD AND ra.Kaiji = se.Kaiji
   AND ra.Nichiji = se.Nichiji AND ra.RaceNum = se.RaceNum
+LEFT JOIN NL_UM um ON se.KettoNum = um.KettoNum
 WHERE ra.Hondai LIKE '%ダービー%'
 ORDER BY se.KakuteiJyuni
+```
+
+### 種牡馬成績分析
+```sql
+SELECT
+  um.Ketto3InfoHansyokuF1Name AS 種牡馬,
+  COUNT(*) AS 出走数,
+  SUM(CASE WHEN CAST(se.KakuteiJyuni AS INTEGER) = 1 THEN 1 ELSE 0 END) AS 勝利数,
+  ROUND(100.0 * SUM(CASE WHEN CAST(se.KakuteiJyuni AS INTEGER) = 1 THEN 1 ELSE 0 END) / COUNT(*), 2) AS 勝率
+FROM NL_SE se
+LEFT JOIN NL_UM um ON se.KettoNum = um.KettoNum
+WHERE se.Year >= '2020'
+  AND se.KakuteiJyuni IS NOT NULL
+  AND um.Ketto3InfoHansyokuF1Name IS NOT NULL
+GROUP BY um.Ketto3InfoHansyokuF1Name
+HAVING COUNT(*) >= 30
+ORDER BY 勝率 DESC
+LIMIT 20
 ```
 
 ## High-level API
@@ -173,6 +204,12 @@ A: jrvltsqlではテーブル名が異なります。NL_RA, NL_SE, NL_UM等を�
 
 **Q: カラムがすべてTEXT型？**
 A: jrvltsqlの設計により、すべてのカラムがTEXT型になっています。数値比較時はCASTが必要な場合があります。
+
+**Q: NL_SEとNL_UMのJOINでNULLが出る？**
+A: KettoNumで約85.5%マッチします。クエリ自動修正機能（ゼロパディング）により、マッチ率が改善されています。
+
+**Q: 血統情報はどうやって取得する？**
+A: NL_UMテーブルに父馬名（Ketto3InfoHansyokuF1Name）、母馬名（Ketto3InfoHansyokuM1Name）、母父馬名（Ketto3InfoHansyokuF2Name）等が含まれています。
 
 ## ライセンス
 
