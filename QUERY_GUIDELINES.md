@@ -1,6 +1,31 @@
-# クエリ作成ガイドライン
+# クエリ作成ガイドライン (jrvltsql版)
 
 Claude Code経由でMCPサーバーを使用する際の重要な注意点とベストプラクティス
+
+## テーブル名の変更
+
+jrvltsql版では旧JVLinkToSQLiteとテーブル名が異なります：
+
+| 旧テーブル名 | 新テーブル名 | 説明 |
+|-------------|-------------|------|
+| NL_RA_RACE | NL_RA | レース情報 |
+| NL_SE_RACE_UMA | NL_SE | 出馬表・結果 |
+| NL_UM_UMA | NL_UM | 馬マスタ |
+| NL_KS_KISYU | NL_KS | 騎手マスタ |
+| NL_CH_CHOKYOSI | NL_CH | 調教師マスタ |
+
+## カラム名の変更
+
+| 旧カラム名 | 新カラム名 | 説明 |
+|-----------|-----------|------|
+| idYear | Year | 開催年 |
+| idMonthDay | MonthDay | 開催月日 |
+| idJyoCD | JyoCD | 競馬場コード |
+| idKaiji | Kaiji | 開催回 |
+| idNichiji | Nichiji | 開催日 |
+| idRaceNum | RaceNum | レース番号 |
+| RaceInfoHondai | Hondai | レース名本題 |
+| Ketto3Info1Bamei | Ketto3InfoBamei1 | 父馬名 |
 
 ## 発見されたデータ形式の注意点
 
@@ -13,10 +38,10 @@ Claude Code経由でMCPサーバーを使用する際の重要な注意点とベ
 
 ```sql
 -- 正しい例
-SELECT * FROM NL_SE_RACE_UMA
+SELECT * FROM NL_SE
 WHERE Ninki = '01'  -- 1番人気
 
-SELECT * FROM NL_SE_RACE_UMA
+SELECT * FROM NL_SE
 WHERE Ninki = '02'  -- 2番人気
 ```
 
@@ -29,17 +54,17 @@ GradeCDの値：
 - `A` = G1
 - `B` = G2
 - `C` = G3
-- `D`, `E`, `F`, `G`, `H`, `L` = その他のクラス
+- `D`, `E`, `F`, `G`, `H`, `I`, `J` = その他のクラス
 
 重賞のみを対象にする場合は明示的に指定します：
 
 ```sql
 -- 重賞（G1, G2, G3）のみ
-SELECT * FROM NL_RA_RACE
+SELECT * FROM NL_RA
 WHERE GradeCD IN ('A', 'B', 'C')
 
 -- G1のみ
-SELECT * FROM NL_RA_RACE
+SELECT * FROM NL_RA
 WHERE GradeCD = 'A'
 ```
 
@@ -52,12 +77,12 @@ WHERE GradeCD = 'A'
 ```sql
 -- 産駒数が多い種牡馬トップ20
 SELECT
-    Ketto3Info1Bamei as sire,
+    Ketto3InfoBamei1 as sire,
     COUNT(*) as progeny_count
-FROM NL_UM_UMA
-WHERE Ketto3Info1Bamei IS NOT NULL
-    AND Ketto3Info1Bamei != ''
-GROUP BY Ketto3Info1Bamei
+FROM NL_UM
+WHERE Ketto3InfoBamei1 IS NOT NULL
+    AND Ketto3InfoBamei1 != ''
+GROUP BY Ketto3InfoBamei1
 ORDER BY progeny_count DESC
 LIMIT 20
 ```
@@ -79,18 +104,18 @@ WHERE KakuteiJyuni = '01'
 
 ### 5. JOIN時の注意点
 
-NL_SE_RACE_UMAとNL_RA_RACEをJOINする際の正しい方法：
+NL_SEとNL_RAをJOINする際の正しい方法：
 
 ```sql
 SELECT ...
-FROM NL_SE_RACE_UMA ru
-JOIN NL_RA_RACE r ON
-    ru.idYear = r.idYear
-    AND ru.idMonthDay = r.idMonthDay
-    AND ru.idJyoCD = r.idJyoCD
-    AND ru.idKaiji = r.idKaiji
-    AND ru.idNichiji = r.idNichiji
-    AND ru.idRaceNum = r.idRaceNum
+FROM NL_SE se
+JOIN NL_RA ra ON
+    se.Year = ra.Year
+    AND se.MonthDay = ra.MonthDay
+    AND se.JyoCD = ra.JyoCD
+    AND se.Kaiji = ra.Kaiji
+    AND se.Nichiji = ra.Nichiji
+    AND se.RaceNum = ra.RaceNum
 ```
 
 全6カラムでJOINする必要があります。
@@ -101,19 +126,19 @@ JOIN NL_RA_RACE r ON
 
 ```sql
 SELECT
-    ru.idYear || '-' || SUBSTR(ru.idMonthDay, 1, 2) || '-' || SUBSTR(ru.idMonthDay, 3, 2) as date,
-    ru.KakuteiJyuni as finish,
-    ru.Ninki as popularity,
-    r.GradeCD as grade
-FROM NL_SE_RACE_UMA ru
-LEFT JOIN NL_RA_RACE r ON
-    ru.idYear = r.idYear AND ru.idMonthDay = r.idMonthDay AND
-    ru.idJyoCD = r.idJyoCD AND ru.idKaiji = r.idKaiji AND
-    ru.idNichiji = r.idNichiji AND ru.idRaceNum = r.idRaceNum
-WHERE ru.Bamei LIKE '%馬名%'
-    AND ru.KakuteiJyuni IS NOT NULL
-    AND LENGTH(ru.KakuteiJyuni) > 0
-ORDER BY ru.idYear DESC, ru.idMonthDay DESC
+    se.Year || '-' || SUBSTR(se.MonthDay, 1, 2) || '-' || SUBSTR(se.MonthDay, 3, 2) as date,
+    se.KakuteiJyuni as finish,
+    se.Ninki as popularity,
+    ra.GradeCD as grade
+FROM NL_SE se
+LEFT JOIN NL_RA ra ON
+    se.Year = ra.Year AND se.MonthDay = ra.MonthDay AND
+    se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
+    se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
+WHERE se.Bamei LIKE '%馬名%'
+    AND se.KakuteiJyuni IS NOT NULL
+    AND LENGTH(se.KakuteiJyuni) > 0
+ORDER BY se.Year DESC, se.MonthDay DESC
 LIMIT 10
 ```
 
@@ -121,16 +146,16 @@ LIMIT 10
 
 ```sql
 SELECT
-    ru.idJyoCD as track_code,
+    se.JyoCD as track_code,
     COUNT(*) as rides,
-    SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
-FROM NL_SE_RACE_UMA ru
-WHERE ru.KisyuRyakusyo LIKE '%騎手名%'
-    AND ru.KakuteiJyuni IS NOT NULL
-    AND LENGTH(ru.KakuteiJyuni) > 0
-    AND ru.idYear >= '2023'
-GROUP BY ru.idJyoCD
+    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+FROM NL_SE se
+WHERE se.KisyuRyakusyo LIKE '%騎手名%'
+    AND se.KakuteiJyuni IS NOT NULL
+    AND LENGTH(se.KakuteiJyuni) > 0
+    AND se.Year >= '2023'
+GROUP BY se.JyoCD
 ORDER BY wins DESC
 ```
 
@@ -138,21 +163,21 @@ ORDER BY wins DESC
 
 ```sql
 SELECT
-    r.GradeCD as grade,
+    ra.GradeCD as grade,
     COUNT(*) as total_races,
-    SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
-FROM NL_SE_RACE_UMA ru
-JOIN NL_RA_RACE r ON
-    ru.idYear = r.idYear AND ru.idMonthDay = r.idMonthDay AND
-    ru.idJyoCD = r.idJyoCD AND ru.idKaiji = r.idKaiji AND
-    ru.idNichiji = r.idNichiji AND ru.idRaceNum = r.idRaceNum
-WHERE ru.Ninki = '01'  -- 1番人気
-    AND ru.KakuteiJyuni IS NOT NULL
-    AND LENGTH(ru.KakuteiJyuni) > 0
-    AND r.GradeCD IN ('A', 'B', 'C')  -- 重賞のみ
-    AND ru.idYear >= '2023'
-GROUP BY r.GradeCD
+    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+FROM NL_SE se
+JOIN NL_RA ra ON
+    se.Year = ra.Year AND se.MonthDay = ra.MonthDay AND
+    se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
+    se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
+WHERE se.Ninki = '01'  -- 1番人気
+    AND se.KakuteiJyuni IS NOT NULL
+    AND LENGTH(se.KakuteiJyuni) > 0
+    AND ra.GradeCD IN ('A', 'B', 'C')  -- 重賞のみ
+    AND se.Year >= '2023'
+GROUP BY ra.GradeCD
 ORDER BY grade
 ```
 
@@ -160,35 +185,82 @@ ORDER BY grade
 
 ```sql
 SELECT
-    ru.Wakuban as frame,
+    se.Wakuban as frame,
     COUNT(*) as runs,
-    SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN ru.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
-FROM NL_SE_RACE_UMA ru
-JOIN NL_RA_RACE r ON
-    ru.idYear = r.idYear AND ru.idMonthDay = r.idMonthDay AND
-    ru.idJyoCD = r.idJyoCD AND ru.idKaiji = r.idKaiji AND
-    ru.idNichiji = r.idNichiji AND ru.idRaceNum = r.idRaceNum
-WHERE r.idJyoCD = '05'  -- 東京
-    AND r.TrackCD LIKE '1%'  -- 芝
-    AND r.Kyori = '1600'  -- 1600m
-    AND ru.KakuteiJyuni IS NOT NULL
-    AND LENGTH(ru.KakuteiJyuni) > 0
-    AND ru.Wakuban IS NOT NULL
-    AND ru.idYear >= '2022'
-GROUP BY ru.Wakuban
-ORDER BY ru.Wakuban
+    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+FROM NL_SE se
+JOIN NL_RA ra ON
+    se.Year = ra.Year AND se.MonthDay = ra.MonthDay AND
+    se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
+    se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
+WHERE ra.JyoCD = '05'  -- 東京
+    AND ra.TrackCD LIKE '1%'  -- 芝
+    AND ra.Kyori = '1600'  -- 1600m
+    AND se.KakuteiJyuni IS NOT NULL
+    AND LENGTH(se.KakuteiJyuni) > 0
+    AND se.Wakuban IS NOT NULL
+    AND se.Year >= '2022'
+GROUP BY se.Wakuban
+ORDER BY se.Wakuban
 ```
 
 ## よくある間違いと修正方法
 
 | 間違い | 正しい方法 | 理由 |
 |--------|-----------|------|
+| `NL_RA_RACE` | `NL_RA` | テーブル名変更 |
+| `NL_SE_RACE_UMA` | `NL_SE` | テーブル名変更 |
+| `idYear` | `Year` | カラム名変更 |
 | `Ninki = '1'` | `Ninki = '01'` | 2桁ゼロ埋め |
 | `KakuteiJyuni = '1'` | `KakuteiJyuni = '01'` | 2桁ゼロ埋め |
-| `GradeCD IS NOT NULL` | `GradeCD IN ('A', 'B', 'C')` | 具体的な値で指定 |
-| `WHERE Bamei = 'ディープインパクト'` | `WHERE Ketto3Info1Bamei LIKE '%種牡馬名%'` | 馬名と種牡馬名は別カラム |
-| LEFT JOIN on 3 columns | LEFT JOIN on 6 columns (all race IDs) | 完全な一意性確保 |
+| `Ketto3Info1Bamei` | `Ketto3InfoBamei1` | カラム名変更 |
+
+## ⚠️ データ品質に関する重要な注意点
+
+### NL_SE.Bamei1/2/3 カラムについて
+
+これらのカラムは**馬名ではなくID（血統登録番号形式）**を含んでいます。
+
+```
+実際のデータ例:
+- Bamei1: "2021103912" (父馬ID)
+- Bamei2: "0000" (母馬ID - ダミー値が多い)
+- Bamei3: "0" (母父馬ID - ダミー値が多い)
+```
+
+**血統分析を行う場合の代替方法**:
+
+```sql
+-- 父馬ID別の成績集計（馬名は取得できない）
+SELECT
+    Bamei1 as sire_id,
+    COUNT(*) as total,
+    SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins
+FROM NL_SE
+WHERE Bamei1 IS NOT NULL AND Bamei1 != '0000000000'
+GROUP BY Bamei1
+HAVING COUNT(*) >= 50
+ORDER BY wins DESC
+```
+
+### NL_UMテーブルについて
+
+NL_UMテーブルは**データのパース不整合**の可能性があります。
+- KettoNumカラムが実際のスキーマに存在しない
+- NL_SEとのJOINは現状困難
+
+## データ型について
+
+jrvltsqlでは**すべてのカラムがTEXT型**です。数値比較を行う場合は注意：
+
+```sql
+-- 距離での比較
+WHERE CAST(Kyori AS INTEGER) >= 1600
+
+-- または文字列比較（ゼロ埋めされている場合）
+WHERE Kyori >= '1600'
+```
 
 ## データ範囲の確認方法
 
@@ -196,57 +268,14 @@ ORDER BY ru.Wakuban
 
 ```sql
 SELECT
-    MIN(idYear) as min_year,
-    MAX(idYear) as max_year,
-    COUNT(DISTINCT idYear) as year_count,
+    MIN(Year) as min_year,
+    MAX(Year) as max_year,
+    COUNT(DISTINCT Year) as year_count,
     COUNT(*) as total_races
-FROM NL_RA_RACE
+FROM NL_RA
 ```
-
-年別のレース数：
-
-```sql
-SELECT idYear, COUNT(*) as race_count
-FROM NL_RA_RACE
-GROUP BY idYear
-ORDER BY idYear DESC
-```
-
-## パフォーマンス最適化
-
-### インデックスの活用
-
-以下のカラムでフィルタする場合は効率的：
-- `idYear` - 年でフィルタ
-- `idJyoCD` - 競馬場でフィルタ
-- `Ninki` - 人気でフィルタ
-- `KakuteiJyuni` - 着順でフィルタ
-
-### LIMIT句の使用
-
-大量データを扱う場合は必ずLIMIT句を使用：
-
-```sql
-SELECT * FROM NL_SE_RACE_UMA
-WHERE idYear >= '2020'
-LIMIT 1000  -- 結果を制限
-```
-
-## トラブルシューティング
-
-### データが0件の場合
-
-1. カラム名のスペルチェック
-2. 値の形式確認（ゼロ埋め等）
-3. JOINの条件を確認
-4. データの実際の値を `SELECT DISTINCT` で確認
-
-### 文字化けする場合
-
-クエリ結果が文字化けする場合は、Pythonスクリプト内で適切なエンコーディング処理を行ってください。
 
 ---
 
-**作成日**: 2025-11-11
-**テスト実施**: test_questions.py
-**成功率**: 100% (7/7 tests passed)
+**作成日**: 2025-11-26
+**対象DB**: jrvltsql (keiba.db)

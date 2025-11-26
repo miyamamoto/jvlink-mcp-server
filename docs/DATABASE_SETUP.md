@@ -1,64 +1,37 @@
-# データベースセットアップ
+# データベースセットアップ (jrvltsql版)
 
 ## 前提条件
 
 - JRA-VAN DataLab会員
-- JVLinkToSQLiteをインストール済み
-- ディスク空き容量 20GB以上
+- jrvltsqlをインストール済み
+- ディスク空き容量 1GB以上
 
-## JVLinkToSQLiteのインストール
-
-**公式版（SQLiteのみ）:**
-```bash
-git clone https://github.com/urasandesu/JVLinkToSQLite.git
-```
-
-**拡張版（SQLite/DuckDB/PostgreSQL）:**
-```bash
-git clone https://github.com/miyamamoto/JVLinkToSQLite.git
-```
-
-**どちらを使う？**
-- SQLiteのみ使用 → 公式版でOK
-- **DuckDBやPostgreSQLを使いたい → 拡張版が必要**
-
-ビルド方法は各リポジトリのREADMEを参照してください。
-
-## データベース作成
+## jrvltsqlのインストール
 
 ```bash
-# ディレクトリ作成
-mkdir ~/JVData
-
-# データ取得
-JVLinkToSQLite --datasource ~/JVData/race.db --mode Exec
+git clone https://github.com/miyamamoto/jrvltsql.git
+cd jrvltsql
 ```
 
-データ取得には時間がかかります（数時間〜1日程度）。
+ビルド方法はリポジトリのREADMEを参照してください。
 
-### ~/JVData/ ディレクトリの内容
+## データベース場所
 
-データベース作成後、以下のファイルが生成されます：
+jrvltsqlで作成されたデータベース：
 
 ```
-~/JVData/
-├── race.db              # SQLiteデータベース（公式版・拡張版）
-├── race.duckdb          # DuckDBデータベース（拡張版のみ）
-└── (JVLinkToSQLiteの設定・一時ファイル)
+C:/Users/mitsu/work/jrvltsql/data/keiba.db
 ```
 
-**race.db / race.duckdb の内容:**
-- **レース情報**: 開催日、競馬場、距離、馬場状態など
-- **馬情報**: 馬名、血統、生年月日など
-- **成績情報**: 着順、タイム、オッズ、人気など
-- **騎手・調教師情報**: 名前、所属、成績など
-- **テーブル数**: 約22テーブル
-- **データサイズ**: 2GB〜50GB（取得期間により変動）
-  - 1年分: 約2-5GB
-  - 3年分: 約5-15GB
-  - 10年分: 約15-50GB
-
-**重要**: このディレクトリはJVLinkToSQLiteが管理します。手動でファイルを編集・削除しないでください。
+**keiba.db の内容:**
+- **レース情報 (NL_RA)**: 開催日、競馬場、距離、馬場状態など
+- **馬情報 (NL_UM)**: 馬名、血統、生年月日など
+- **成績情報 (NL_SE)**: 着順、タイム、オッズ、人気など
+- **騎手・調教師情報 (NL_KS, NL_CH)**: 名前、所属、成績など
+- **オッズ情報 (NL_O1〜NL_O6)**: 単勝、複勝、馬連、ワイド等
+- **払戻情報 (NL_HR)**: 各種払戻金
+- **テーブル数**: 約57テーブル（NL_38 + RT_19）
+- **データサイズ**: 約300MB〜
 
 ## JVLink MCP Serverのセットアップ
 
@@ -67,7 +40,7 @@ JVLinkToSQLite --datasource ~/JVData/race.db --mode Exec
 ```bash
 cd jvlink-mcp-server
 export DB_TYPE=sqlite
-export DB_PATH=~/JVData/race.db
+export DB_PATH=C:/Users/mitsu/work/jrvltsql/data/keiba.db
 
 # 接続テスト
 uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db = DatabaseConnection(); print(db.get_tables())"
@@ -76,7 +49,7 @@ uv run python -c "from jvlink_mcp_server.database import DatabaseConnection; db 
 ### Docker
 
 ```bash
-export JVDATA_DIR=~/JVData
+export JVDATA_DIR=C:/Users/mitsu/work/jrvltsql/data
 docker compose build
 docker compose up jvlink-sqlite
 ```
@@ -89,14 +62,14 @@ docker compose up jvlink-sqlite
 
 **Docker（推奨）:**
 ```bash
-export JVDATA_DIR=~/JVData
+export JVDATA_DIR=C:/Users/mitsu/work/jrvltsql/data
 docker compose up jvlink-sqlite
 ```
 
 **ローカル環境:**
 ```bash
 export DB_TYPE=sqlite
-export DB_PATH=~/JVData/race.db
+export DB_PATH=C:/Users/mitsu/work/jrvltsql/data/keiba.db
 uv run python -m jvlink_mcp_server.server_sse
 ```
 
@@ -116,15 +89,31 @@ uv run python -m jvlink_mcp_server.server_sse
 
 Claude Desktopを再起動して完了です。
 
+## 主要テーブル
+
+| テーブル | 説明 | 主キー |
+|---------|------|--------|
+| NL_RA | レース情報 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum |
+| NL_SE | 出馬表・結果 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum, Umaban |
+| NL_UM | 馬マスタ | KettoNum |
+| NL_KS | 騎手マスタ | KisyuCode |
+| NL_CH | 調教師マスタ | ChokyosiCode |
+| NL_HR | 払戻 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum |
+| NL_O1 | 単勝・複勝オッズ | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum, Umaban |
+
 ## トラブルシューティング
 
 **データベースが見つからない**
-- パスを絶対パスで指定（`C:/Users/<username>/JVData/race.db`）
+- パスを絶対パスで指定（`C:/Users/mitsu/work/jrvltsql/data/keiba.db`）
 - スラッシュ `/` を使う（バックスラッシュ `\` はNG）
 
 **テーブルが見つからない**
-- JVLinkToSQLiteでデータ取得が完了しているか確認
+- jrvltsqlでデータ取得が完了しているか確認
 - データベースファイルサイズが0バイトでないか確認
+
+**旧テーブル名（NL_RA_RACE等）が使えない**
+- jrvltsqlではテーブル名が異なります
+- NL_RA, NL_SE, NL_UM等を使用してください
 
 **Claude Desktopで接続できない**
 - Claude Desktopを完全に再起動

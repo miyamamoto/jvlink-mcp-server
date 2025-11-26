@@ -3,6 +3,7 @@
 import os
 import json
 from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
@@ -19,6 +20,25 @@ from .database.schema_descriptions import (
     get_column_description,
     get_table_description,
     QUERY_GENERATION_HINTS,
+)
+# Improvement modules
+from .database.query_corrector import correct_query as auto_correct_query
+from .database.query_templates import (
+    list_templates as get_templates_list,
+    render_template,
+    get_template_info,
+)
+from .database.high_level_api import (
+    get_favorite_performance as _get_favorite_performance,
+    get_jockey_stats as _get_jockey_stats,
+    get_frame_stats as _get_frame_stats,
+    get_horse_history as _get_horse_history,
+    get_sire_stats as _get_sire_stats,
+)
+from .database.sample_data_provider import (
+    get_sample_data as _get_sample_data,
+    get_column_value_examples as _get_column_value_examples,
+    get_data_snapshot as _get_data_snapshot,
 )
 
 # FastMCPサーバーの初期化
@@ -340,7 +360,7 @@ def generate_sql_from_natural_language(query_text: str) -> dict:
 
 @mcp.tool()
 def execute_safe_query(sql_query: str) -> dict:
-    """安全なSQLクエリを実行（読み取り専用）
+    """安全なSQLクエリを実行（読み取り専用、自動修正機能付き）
 
     Args:
         sql_query: 実行するSQLクエリ（SELECTのみ）
@@ -349,16 +369,27 @@ def execute_safe_query(sql_query: str) -> dict:
         クエリ実行結果
     """
     try:
+        # Auto-correct query (zero-padding etc.)
+        corrected_sql, corrections = auto_correct_query(sql_query)
+        
         with DatabaseConnection() as db:
-            result_df = db.execute_safe_query(sql_query)
+            result_df = db.execute_safe_query(corrected_sql)
 
-            return {
+            result = {
                 "success": True,
                 "rows": len(result_df),
                 "columns": result_df.columns.tolist(),
                 "data": result_df.head(100).to_dict(orient="records"),
                 "note": "最大100行まで表示" if len(result_df) > 100 else None
             }
+            
+            # Notify if auto-corrections were made
+            if corrections:
+                result["auto_corrections"] = corrections
+                result["original_query"] = sql_query
+                result["corrected_query"] = corrected_sql
+            
+            return result
     except Exception as e:
         return {
             "success": False,
@@ -396,12 +427,155 @@ def validate_sql_query(sql_query: str) -> dict:
     }
 
 
+
+
 # ============================================================================
-# TARGET風レース検索
+# High-level API (convenient analysis functions)
 # ============================================================================
 
-# 注意: search_racesとanalyze_popularity_stats関数は実際のカラム名と合わないため削除
-# 代わりにexecute_safe_queryとResourcesのクエリ例を使用してください
+@mcp.tool()
+def analyze_favorite_performance(
+    ninki: int = 1,
+    venue: Optional[str] = None,
+    grade: Optional[str] = None,
+    year_from: Optional[str] = None,
+    distance: Optional[int] = None
+) -> dict:
+    """人気別成績を分析（自動で正しいSQLを生成）"""
+    with DatabaseConnection() as db:
+        return _get_favorite_performance(
+            db, venue=venue, ninki=ninki, grade=grade,
+            year_from=year_from, distance=distance
+        )
+
+
+@mcp.tool()
+def analyze_jockey_stats(
+    jockey_name: str,
+    venue: Optional[str] = None,
+    year_from: Optional[str] = None,
+    distance: Optional[int] = None
+) -> dict:
+    """騎手成績を分析"""
+    with DatabaseConnection() as db:
+        return _get_jockey_stats(
+            db, jockey_name=jockey_name, venue=venue,
+            year_from=year_from, distance=distance
+        )
+
+
+@mcp.tool()
+def analyze_frame_stats(
+    venue: Optional[str] = None,
+    distance: Optional[int] = None,
+    year_from: Optional[str] = None
+) -> dict:
+    """枠番別成績を分析"""
+    with DatabaseConnection() as db:
+        df = _get_frame_stats(db, venue=venue, distance=distance, year_from=year_from)
+        return {
+            "data": df.to_dict(orient="records"),
+            "conditions": df.attrs.get("conditions", ""),
+            "columns": df.columns.tolist()
+        }
+
+
+@mcp.tool()
+def get_horse_race_history(
+    horse_name: str,
+    year_from: Optional[str] = None
+) -> dict:
+    """馬の戦績を取得"""
+    with DatabaseConnection() as db:
+        df = _get_horse_history(db, horse_name=horse_name, year_from=year_from)
+        return {
+            "horse_name": horse_name,
+            "total_races": len(df),
+            "data": df.to_dict(orient="records"),
+            "columns": df.columns.tolist()
+        }
+
+
+@mcp.tool()
+def analyze_sire_stats(
+    sire_name: str,
+    venue: Optional[str] = None,
+    distance: Optional[int] = None,
+    year_from: Optional[str] = None
+) -> dict:
+    """種牡馬（父馬）成績を分析"""
+    with DatabaseConnection() as db:
+        return _get_sire_stats(
+            db, sire_name=sire_name, venue=venue,
+            distance=distance, year_from=year_from
+        )
+
+
+# ============================================================================
+# Query Templates
+# ============================================================================
+
+@mcp.tool()
+def list_query_templates() -> dict:
+    """利用可能なクエリテンプレート一覧を取得"""
+    templates = get_templates_list()
+    return {
+        "templates": templates,
+        "total": len(templates),
+        "usage": "execute_template_query(template_name, **params)"
+    }
+
+
+@mcp.tool()
+def execute_template_query(template_name: str, **params) -> dict:
+    """テンプレートからSQLを生成して実行"""
+    try:
+        sql = render_template(template_name, **params)
+        with DatabaseConnection() as db:
+            result_df = db.execute_safe_query(sql)
+            return {
+                "success": True,
+                "template": template_name,
+                "parameters": params,
+                "generated_sql": sql,
+                "rows": len(result_df),
+                "columns": result_df.columns.tolist(),
+                "data": result_df.head(100).to_dict(orient="records"),
+                "note": "max 100 rows" if len(result_df) > 100 else None
+            }
+    except ValueError as e:
+        return {"success": False, "error": str(e), "hint": "Use list_query_templates to see available templates"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# Sample Data Provider
+# ============================================================================
+
+@mcp.tool()
+def get_table_sample_data(table_name: str, num_rows: int = 5) -> dict:
+    """テーブルのサンプルデータを取得（データ形式理解用）"""
+    with DatabaseConnection() as db:
+        return _get_sample_data(db, table_name=table_name, num_rows=num_rows)
+
+
+@mcp.tool()
+def get_column_examples(table_name: str, column_name: str, limit: int = 10) -> dict:
+    """特定カラムの値の例を取得（データ形式理解用）"""
+    with DatabaseConnection() as db:
+        return _get_column_value_examples(
+            db, table_name=table_name,
+            column_name=column_name, limit=limit
+        )
+
+
+@mcp.tool()
+def get_database_overview() -> dict:
+    """データベース全体の概要を取得"""
+    with DatabaseConnection() as db:
+        return _get_data_snapshot(db)
+
 
 # サーバーのエントリーポイント
 if __name__ == "__main__":

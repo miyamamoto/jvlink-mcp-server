@@ -1,4 +1,4 @@
-"""Test database compatibility: SQLite, DuckDB, PostgreSQL"""
+"""Test database compatibility: SQLite, DuckDB, PostgreSQL (jrvltsql版)"""
 
 import sys
 import os
@@ -64,21 +64,14 @@ def test_db_type(db_type: str, db_path: str):
         return False
 
 def main():
-    print("Database Compatibility Test")
+    print("Database Compatibility Test (jrvltsql版)")
     print("=" * 80)
 
     # Check which databases are available
-    duckdb_path = "C:/Users/<username>/JVData/race.duckdb"
-    sqlite_path = "C:/Users/<username>/JVData/race.db"
+    # jrvltsql database path
+    sqlite_path = "C:/Users/mitsu/work/jrvltsql/data/keiba.db"
 
     results = {}
-
-    # Test DuckDB (if exists)
-    if os.path.exists(duckdb_path):
-        results["DuckDB"] = test_db_type("duckdb", duckdb_path)
-    else:
-        print(f"\n[WARN] DuckDB database not found: {duckdb_path}")
-        results["DuckDB"] = None
 
     # Test SQLite (if exists)
     if os.path.exists(sqlite_path):

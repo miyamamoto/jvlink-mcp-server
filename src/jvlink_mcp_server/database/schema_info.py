@@ -1,205 +1,59 @@
-"""JVLinkデータベースのスキーマ情報（実際のカラム名版）"""
+"""JVLinkデータベースのスキーマ情報（jrvltsql版）
 
-# JVLinkToSQLiteで作成される主要テーブルの情報
-# 注意: カラム名は実際のJVLinkデータ仕様に基づく日本語ローマ字表記
+重要: すべてのカラムはTEXT型です。
+数値カラム（着順、人気等）はゼロパディングされた文字列です。
+"""
 
 JVLINK_TABLES = {
-    "NL_RA_RACE": {
+    "NL_RA": {
         "description": "レース情報テーブル",
-                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
         "key_columns": {
-            # レースID構成要素
-            "idYear": "開催年 (例: 2024)",
-            "idMonthDay": "開催月日 (例: 1109 = 11月9日)",
-            "idJyoCD": "競馬場コード (01-10)",
-            "idKaiji": "開催回",
-            "idNichiji": "開催日",
-            "idRaceNum": "レース番号",
-
-            # レース詳細
-            "RaceInfoHondai": "レース名本題",
-            "GradeCD": "グレードコード",
-            "Kyori": "距離",
-            "TrackCD": "トラック種別 (1=芝, 2=ダート)",
-
-            # 馬場・天候
-            "TenkoBabaTenkoCD": "天候コード",
-            "TenkoBabaSibaBabaCD": "芝馬場状態",
-            "TenkoBabaDirtBabaCD": "ダート馬場状態",
+            "Year": "開催年",
+            "MonthDay": "開催月日",
+            "JyoCD": "競馬場コード (01-10、ゼロパディング)",
+            "Hondai": "レース名本題",
+            "GradeCD": "グレードコード (A=G1, B=G2, C=G3)",
+            "Kyori": "距離（メートル）",
+            "TrackCD": "トラックコード（2桁: 1桁目=種別[1=芝,2=ダート], 2桁目=馬場状態）",
         },
     },
-
-    "NL_SE_RACE_UMA": {
+    "NL_SE": {
         "description": "出馬表・レース結果テーブル",
-                "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum", "Umaban"],
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
         "key_columns": {
-            # レースID構成要素
-            "idYear": "開催年",
-            "idMonthDay": "開催月日",
-            "idJyoCD": "競馬場コード",
-            "idKaiji": "開催回",
-            "idNichiji": "開催日",
-            "idRaceNum": "レース番号",
-
-            # 馬情報
-            "Umaban": "馬番",
-            "KettoNum": "血統登録番号（馬ID）",
+            "Umaban": "馬番（01-18、ゼロパディング）",
+            "Wakuban": "枠番（1-8）",
             "Bamei": "馬名",
-            "Wakuban": "枠番",
-            "BaTaijyu": "馬体重",
-            "ZogenSa": "馬体重増減",
-
-            # 騎手・調教師
             "KisyuRyakusyo": "騎手名略称",
-            "KisyuRyakusyoBefore": "前走騎手名",
-            "ChokyosiRyakusyo": "調教師名略称",
-
-            # レース結果
-            "KakuteiJyuni": "確定着順",
-            "Ninki": "人気",
+            "KakuteiJyuni": "★重要: 確定着順（01=1着, 02=2着...ゼロパディング2桁。1ではなく01を使用）",
+            "Ninki": "★重要: 人気（01=1番人気, 02=2番人気...ゼロパディング2桁。1ではなく01を使用）",
             "Odds": "単勝オッズ",
-            "Time": "走破タイム",
-            "HaronTimeL3": "後3ハロンタイム",
+            "HaronTimeL3": "上がり3F（0.1秒単位、例: 334=33.4秒）",
+            "BaTaijyu": "馬体重",
+            "Bamei1": "父馬名",
+            "Bamei2": "母馬名",
+            "Bamei3": "母父馬名",
         },
     },
-
-    "NL_UM_UMA": {
-        "description": "馬マスタテーブル",
-                "primary_keys": ["KettoNum"],
-        "key_columns": {
-            "KettoNum": "血統登録番号（馬の一意識別子）",
-            "Bamei": "馬名",
-            "BameiKana": "馬名カナ",
-            "BameiEng": "馬名英字",
-            "SexCD": "性別コード",
-            "KeiroCD": "毛色コード",
-            "BirthDate": "生年月日",
-
-            # 血統情報（三代血統）
-            "Ketto3Info1Bamei": "父馬名",
-            "Ketto3Info2Bamei": "母馬名",
-            "Ketto3Info3Bamei": "父父",
-            "Ketto3Info4Bamei": "父母",
-            "Ketto3Info5Bamei": "母父",
-            "Ketto3Info6Bamei": "母母",
-
-            # 関係者
-            "BanusiName": "馬主名",
-            "BanusiCode": "馬主コード",
-            "ChokyosiRyakusyo": "調教師略称",
-        },
-    },
-
-    "NL_KS_KISYU": {
-        "description": "騎手マスタテーブル",
-                "primary_keys": ["KisyuCode"],
-        "key_columns": {
-            "KisyuCode": "騎手コード",
-            "KisyuName": "騎手名",
-            "KisyuNameKana": "騎手名カナ",
-            "KisyuNameEng": "騎手名英字",
-        },
-    },
-
-    "NL_CH_CHOKYOSI": {
-        "description": "調教師マスタテーブル",
-                "primary_keys": ["ChokyosiCode"],
-        "key_columns": {
-            "ChokyosiCode": "調教師コード",
-            "ChokyosiName": "調教師名",
-            "ChokyosiNameKana": "調教師名カナ",
-            "ChokyosiNameEng": "調教師名英字",
-        },
-    },
+    "NL_UM": {"description": "馬マスタ", "primary_keys": ["KettoNum"], "key_columns": {"Bamei": "馬名", "Ketto3InfoBamei1": "父馬名", "Ketto3InfoBamei2": "母馬名", "Ketto3InfoBamei5": "母父馬名"}},
+    "NL_KS": {"description": "騎手マスタ", "primary_keys": ["KisyuCode"], "key_columns": {}},
+    "NL_CH": {"description": "調教師マスタ", "primary_keys": ["ChokyosiCode"], "key_columns": {}},
+    "NL_HR": {"description": "払戻テーブル", "primary_keys": [], "key_columns": {}},
+    "NL_O1": {"description": "単勝複勝オッズ", "primary_keys": [], "key_columns": {}},
 }
 
-# 競馬場コードマッピング
-TRACK_CODES = {
-    "01": "札幌",
-    "02": "函館",
-    "03": "福島",
-    "04": "新潟",
-    "05": "東京",
-    "06": "中山",
-    "07": "中京",
-    "08": "京都",
-    "09": "阪神",
-    "10": "小倉",
-}
+TRACK_CODES = {"01": "札幌", "02": "函館", "03": "福島", "04": "新潟", "05": "東京", "06": "中山", "07": "中京", "08": "京都", "09": "阪神", "10": "小倉"}
+GRADE_CODES = {"A": "GI", "B": "GII", "C": "GIII", "D": "リステッド", "E": "オープン特別", "F": "3勝クラス", "G": "2勝クラス", "H": "1勝クラス", "I": "未勝利", "J": "新馬"}
+TRACK_CONDITION_CODES = {"1": "良", "2": "稍重", "3": "重", "4": "不良"}
+TRACK_TYPE_CODES = {"1": "芝", "2": "ダート", "5": "障害"}
+SEX_CODES = {"1": "牡", "2": "牝", "3": "セン"}
 
-# グレードコードマッピング
-GRADE_CODES = {
-    "A1": "GⅠ",
-    "A2": "GⅡ",
-    "A3": "GⅢ",
-    "B": "オープン",
-}
+def get_schema_description():
+    return {"tables": JVLINK_TABLES, "track_codes": TRACK_CODES, "grade_codes": GRADE_CODES, "important_notes": ["★重要: KakuteiJyuni(着順)とNinki(人気)はゼロパディング2桁（01,02...）", "★重要: JyoCD(競馬場)もゼロパディング（05=東京）", "すべてのカラムはTEXT型"]}
 
-# 馬場状態マッピング
-TRACK_CONDITION_CODES = {
-    "1": "良",
-    "2": "稍重",
-    "3": "重",
-    "4": "不良",
-}
+def get_query_examples():
+    return {"1番人気勝率": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE Ninki = "01" AND KakuteiJyuni IS NOT NULL", "騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20", "東京1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE JyoCD = "05" AND Ninki = "01" AND KakuteiJyuni IS NOT NULL", "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = "01" THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY Wakuban ORDER BY Wakuban"}
 
-# トラック種別マッピング
-TRACK_TYPE_CODES = {
-    "1": "芝",
-    "2": "ダート",
-}
-
-
-def get_schema_description() -> dict:
-    """スキーマ全体の説明を取得"""
-    return {
-        "tables": JVLINK_TABLES,
-        "track_codes": TRACK_CODES,
-        "grade_codes": GRADE_CODES,
-        "track_condition_codes": TRACK_CONDITION_CODES,
-        "track_type_codes": TRACK_TYPE_CODES,
-        "usage_notes": [
-            "レース検索は NL_RA_RACE テーブルを使用",
-            "出馬表・レース結果は NL_SE_RACE_UMA テーブルを使用",
-            "馬情報は NL_UM_UMA テーブルを使用",
-            "騎手情報は NL_KS_KISYU テーブルを使用",
-            "調教師情報は NL_CH_CHOKYOSI テーブルを使用",
-            "重要: NL_RA_RACE_UMAというテーブルは存在しません",
-            "レースIDは複数カラムの組み合わせです",
-            "KakuteiJyuniがNULLまたは空の場合はレース前データです",
-        ],
-        "important_notes": [
-            "カラム名は日本語ローマ字表記（例: idYear, KakuteiJyuni）",
-            "race_id, race_date のような英語カラム名は使用できません",
-            "血統情報: 父=Ketto3Info1Bamei, 母=Ketto3Info2Bamei, 母父=Ketto3Info5Bamei",
-            "FBamei, BokuroBamei, BBamei などのカラムは存在しません",
-        ]
-    }
-
-
-def get_query_examples() -> dict:
-    """クエリ例"""
-    return {
-        "騎手成績": """
-SELECT
-    ru.KisyuRyakusyo,
-    ru.Bamei,
-    ru.KakuteiJyuni,
-    ru.Ninki
-FROM NL_SE_RACE_UMA ru
-WHERE ru.KisyuRyakusyo LIKE '%ルメール%'
-  AND ru.KakuteiJyuni IS NOT NULL
-  AND LENGTH(ru.KakuteiJyuni) > 0
-ORDER BY ru.idMonthDay DESC
-LIMIT 200
-        """,
-        "血統検索（父馬別）": """
-SELECT
-    u.Bamei,
-    u.Ketto3Info1Bamei as sire,
-    u.Ketto3Info2Bamei as dam
-FROM NL_UM_UMA u
-WHERE u.Ketto3Info1Bamei LIKE '%ディープインパクト%'
-LIMIT 100
-        """,
-    }
+def get_target_equivalent_query_examples():
+    return get_query_examples()
