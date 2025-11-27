@@ -49,6 +49,19 @@ SQLを書く必要はありません。自然な日本語で質問すれば、�
 - **Python 3.11以上**
 - **競馬データベース** - [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成
 
+> **⚠️ jrvltsqlのプラットフォーム制限について**
+>
+> [jrvltsql](https://github.com/miyamamoto/jrvltsql)は**Windowsでのみ動作します**。これはデータ取得元である[JV-Link](https://jra-van.jp/)がWindows専用のCOMコンポーネントであるためです。
+>
+> **macOS / Linux で利用する場合：**
+>
+> | 方法 | 説明 |
+> |------|------|
+> | **SQLiteファイルをコピー** | Windowsで作成した`keiba.db`をmacOS/Linuxにコピーして使用。ファイル共有、クラウドストレージ、SCPなどで転送できます。 |
+> | **PostgreSQLを使用** | jrvltsqlはPostgreSQLへのエクスポートもサポートしています。WindowsでPostgreSQLサーバーにデータを書き込み、macOS/Linuxからそのサーバーに接続して利用できます。 |
+>
+> いずれの方法も、**データベースの作成・更新はWindows上で行う**必要があります。
+
 ### 方法1: .mcpbファイルで簡単インストール（推奨）
 
 1. [Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)からお使いのOS用の `.mcpb` ファイルをダウンロード
