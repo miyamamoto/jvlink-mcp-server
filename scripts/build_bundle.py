@@ -20,22 +20,34 @@ from pathlib import Path
 
 def get_mcpb_command() -> list[str]:
     """Get the command to run mcpb (handles different environments)."""
-    # Try direct mcpb first
+    is_windows = platform.system() == "Windows"
+
+    # Try direct mcpb first (with shell=True on Windows for .cmd files)
     try:
-        subprocess.run(["mcpb", "--version"], capture_output=True, check=True)
+        subprocess.run(
+            ["mcpb", "--version"],
+            capture_output=True,
+            check=True,
+            shell=is_windows
+        )
         return ["mcpb"]
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
-    # Try npx mcpb
+    # Try npx mcpb (with shell=True on Windows)
     try:
-        subprocess.run(["npx", "mcpb", "--version"], capture_output=True, check=True)
+        subprocess.run(
+            ["npx", "mcpb", "--version"],
+            capture_output=True,
+            check=True,
+            shell=is_windows
+        )
         return ["npx", "mcpb"]
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
     # Try common npm global paths on Windows
-    if platform.system() == "Windows":
+    if is_windows:
         npm_paths = [
             Path(os.environ.get("APPDATA", "")) / "npm" / "mcpb.cmd",
             Path(os.environ.get("LOCALAPPDATA", "")) / "npm" / "mcpb.cmd",
@@ -43,6 +55,22 @@ def get_mcpb_command() -> list[str]:
         for npm_path in npm_paths:
             if npm_path.exists():
                 return [str(npm_path)]
+
+        # Try to get npm prefix dynamically
+        try:
+            result = subprocess.run(
+                ["npm", "config", "get", "prefix"],
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=True
+            )
+            npm_prefix = Path(result.stdout.strip())
+            mcpb_cmd = npm_prefix / "mcpb.cmd"
+            if mcpb_cmd.exists():
+                return [str(mcpb_cmd)]
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
 
     raise RuntimeError(
         "mcpb not found. Please install it with: npm install -g @anthropic-ai/mcpb"
