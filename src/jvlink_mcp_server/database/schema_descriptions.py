@@ -1,4 +1,4 @@
-"""JVLink Database Schema Descriptions (jrvltsql版)
+﻿"""JVLink Database Schema Descriptions (jrvltsql版)
 
 カラムごとの詳細な説明を提供します。
 LLMがより正確にクエリを生成できるようにするための情報です。
@@ -17,7 +17,7 @@ TABLE_DESCRIPTIONS = {
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
     },
     "NL_UM": {
-        "description": "馬マスタテーブル - 馬の基本情報、血統情報、生産者等。NL_SE.KettoNumでJOIN可能",
+        "description": "馬マスタテーブル - 馬の基本情報、血統情報、生産者等。NL_SE.KettoNumでJOIN可能（JRA中央競馬のみ。地方競馬はマッチしない）",
         "primary_keys": ["KettoNum"],
     },
     "NL_KS": {
@@ -35,6 +35,10 @@ TABLE_DESCRIPTIONS = {
     "NL_O1": {
         "description": "単勝・複勝オッズテーブル",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
+    },
+    "NL_WE": {
+        "description": "馬場状態テーブル - 現在未対応（テーブルは存在するがデータが空。JVLinkの0B11/0B14/0B16 SPECが必要）",
+        "primary_keys": [],
     },
 }
 
@@ -61,7 +65,6 @@ COLUMN_DESCRIPTIONS = {
         "TorokuTosu": "登録頭数",
         "SyussoTosu": "出走頭数",
     },
-
     # === NL_SE (出馬表) ===
     "NL_SE": {
         "Umaban": "馬番",
@@ -75,12 +78,12 @@ COLUMN_DESCRIPTIONS = {
         "ChokyosiCode": "調教師コード",
         "ChokyosiRyakusyo": "調教師名略称",
         "Futan": "斤量（kg）",
-        "Ninki": "★人気順位（ゼロパディング2桁: '01'=1番人気。'1'ではなく'01'を使用）",
+        "Ninki": "人気順位（ゼロパディング2桁: 01=1番人気）",
         "Odds": "単勝オッズ",
         "ZogenFugo": "増減記号（+, -, ±）",
         "ZogenSa": "増減差（馬体重の増減、kg）",
         "IJyoCD": "異常区分コード（取消、除外、中止など）",
-        "KakuteiJyuni": "★確定着順（ゼロパディング2桁: '01'=1着,'02'=2着。'1'ではなく'01'を使用）",
+        "KakuteiJyuni": "確定着順（ゼロパディング2桁: 01=1着,02=2着）",
         "Time": "走破タイム（MMSSf形式、例：010435=1分04秒35）",
         "ChakusaCD": "着差コード（1=ハナ, 2=クビ, 3=1/2馬身, etc.）",
         "HaronTimeL3": "上がり3Fタイム",
@@ -89,10 +92,9 @@ COLUMN_DESCRIPTIONS = {
         "Jyuni3c": "3コーナー通過順位",
         "Jyuni4c": "4コーナー通過順位",
         "BaTaijyu": "馬体重（kg）",
-        "Bamei1": "⚠️注意: 父馬名ではない。KettoNum1が参照する馬の名前が入っている。血統情報はNL_UMテーブルを使用すること",
-        # Bamei2, Bamei3 カラムは実際には存在しない
+        "Bamei1": "対戦相手の馬名（1着馬は2着馬、2着以下は1着馬の名前）。父馬名ではない。血統情報はNL_UMを使用",
+        "KettoNum1": "対戦相手の血統登録番号（1着馬は2着馬、2着以下は1着馬）。父馬の血統番号ではない",
     },
-
     # === NL_UM (馬マスタ) ===
     "NL_UM": {
         "KettoNum": "血統登録番号（10桁、馬の一意識別子）",
@@ -114,7 +116,6 @@ COLUMN_DESCRIPTIONS = {
         "Ketto3InfoBamei5": "母父馬名",
         "Ketto3InfoBamei6": "母母馬名",
     },
-
     # === NL_KS (騎手マスタ) ===
     "NL_KS": {
         "KisyuCode": "騎手コード",
@@ -123,7 +124,6 @@ COLUMN_DESCRIPTIONS = {
         "KisyuRyakusyo": "騎手名略称",
         "TozaiCD": "東西コード（1=美浦, 2=栗東）",
     },
-
     # === NL_CH (調教師マスタ) ===
     "NL_CH": {
         "ChokyosiCode": "調教師コード",
@@ -152,11 +152,10 @@ CODE_MAPPINGS = {
         "23": "障害・芝", "24": "障害・ダート",
     },
     "馬場状態コード": {
-        "1": "良（ベストコンディション）", "2": "稍重（やや重い、乾燥不足）",
-        "3": "重（重い、水分多い）", "4": "不良（最悪、大量の水分）",
+        "1": "良", "2": "稍重", "3": "重", "4": "不良",
     },
     "性別コード": {
-        "1": "牡馬（オスの馬）", "2": "牝馬（メスの馬）", "3": "セン馬（去勢された牡馬）",
+        "1": "牡馬", "2": "牝馬", "3": "セン馬",
     },
 }
 
@@ -166,87 +165,31 @@ QUERY_GENERATION_HINTS = """
 
 ### 主要な結合パターン
 
-1. **レース情報 + 出馬表**
-```sql
-SELECT *
-FROM NL_RA r
-JOIN NL_SE s
-  ON r.Year = s.Year
-  AND r.MonthDay = s.MonthDay
-  AND r.JyoCD = s.JyoCD
-  AND r.Kaiji = s.Kaiji
-  AND r.Nichiji = s.Nichiji
-  AND r.RaceNum = s.RaceNum
-```
+1. レース情報 + 出馬表: NL_RA JOIN NL_SE ON 6カラム
+2. 出馬表 + 馬マスタ: NL_SE JOIN NL_UM ON KettoNum
+3. 出馬表 + 騎手マスタ: NL_SE JOIN NL_KS ON KisyuCode
 
-2. **出馬表 + 馬マスタ**
-```sql
-SELECT *
-FROM NL_SE s
-JOIN NL_UM u ON s.KettoNum = u.KettoNum
-```
+### 重要な制限事項
 
-3. **出馬表 + 騎手マスタ**
-```sql
-SELECT *
-FROM NL_SE s
-JOIN NL_KS k ON s.KisyuCode = k.KisyuCode
-```
+#### NL_SE.Bamei1/KettoNum1について
+- Bamei1: 対戦相手の馬名（1着馬は2着馬、2着以下は1着馬）。父馬名ではない
+- KettoNum1: 対戦相手の血統登録番号。父馬の血統番号ではない
+- Bamei2/Bamei3/KettoNum2/KettoNum3: これらのカラムは存在しない
+- 血統情報は必ずNL_UMテーブルを使用すること
 
-### よくある条件
+#### 馬場状態データ（NL_WE）
+- NL_WEテーブルは現在データが空です
+- JVLinkの0B11/0B14/0B16 SPECでの取得が必要（現在未対応）
+- 馬場状態での分析は現時点では対応不可
 
-- **東京競馬場の芝1600m**: `JyoCD = '05' AND Kyori = '1600' AND SyubetuCD = '11'`
-- **G1レース**: `GradeCD = 'A'`
-- **1番人気**: `Ninki = '01'`
-- **過去3年**: `Year >= strftime('%Y', date('now', '-3 years'))`
-
-### 注意事項
-
-- すべてのカラムがTEXT型です（数値比較時は注意）
-- 日付は文字列型（Year, MonthDay）なので文字列比較になります
-- 距離もTEXT型（'1600', '2000'など）
-- 着順0は「着外」「取消」「除外」を意味します
-
-### 血統情報の取得方法
-
-血統情報（父馬名、母馬名等）を取得するには、NL_UMテーブルとJOINします：
-
-```sql
-SELECT 
-    s.Bamei as 馬名,
-    u.Ketto3InfoBamei1 as 父馬名,
-    u.Ketto3InfoBamei2 as 母馬名,
-    u.Ketto3InfoBamei5 as 母父馬名
-FROM NL_SE s
-LEFT JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL
-```
-
-### 種牡馬成績分析
-
-```sql
-SELECT 
-    u.Ketto3InfoBamei1 as 種牡馬,
-    COUNT(*) as 出走数,
-    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as 勝利数,
-    ROUND(SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
-FROM NL_SE s
-JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL AND s.KakuteiJyuni != ''
-GROUP BY u.Ketto3InfoBamei1
-HAVING COUNT(*) >= 100
-ORDER BY 勝利数 DESC
-```
-
-### 注意事項（NL_SE）
-
-- **Bamei1カラム**: 父馬名ではありません。血統情報はNL_UMテーブルを使用してください
-- **Bamei2/Bamei3**: これらのカラムは存在しません
+#### 地方競馬のJOIN制限
+- NL_SE + NL_UM のJOINはJRA中央競馬のみ100%マッチ
+- 地方競馬（JyoCD > 10）はNL_UMにデータがないためJOIN不可
+- 地方競馬の血統分析は現時点では対応不可
 """
 
 
 def get_column_description(table_name: str, column_name: str) -> str:
-    """カラムの説明を取得"""
     if table_name in COLUMN_DESCRIPTIONS:
         manual_desc = COLUMN_DESCRIPTIONS[table_name].get(column_name, "")
         if manual_desc:
@@ -255,7 +198,6 @@ def get_column_description(table_name: str, column_name: str) -> str:
 
 
 def get_table_description(table_name: str) -> dict:
-    """テーブルの説明を取得"""
     return TABLE_DESCRIPTIONS.get(table_name, {
         "description": "（説明未登録）",
         "primary_keys": [],

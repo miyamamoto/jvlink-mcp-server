@@ -1,4 +1,4 @@
-"""JVLinkデータベースのスキーマ情報（jrvltsql版）
+﻿"""JVLinkデータベースのスキーマ情報（jrvltsql版）
 
 重要: すべてのカラムはTEXT型です。
 数値カラム（着順、人気等）はゼロパディングされた文字列です。
@@ -27,19 +27,20 @@ JVLINK_TABLES = {
             "Wakuban": "枠番（1-8）",
             "Bamei": "馬名",
             "KisyuRyakusyo": "騎手名略称",
-            "KakuteiJyuni": "★重要: 確定着順（01=1着, 02=2着...ゼロパディング2桁。1ではなく01を使用）",
-            "Ninki": "★重要: 人気（01=1番人気, 02=2番人気...ゼロパディング2桁。1ではなく01を使用）",
+            "KakuteiJyuni": "確定着順（01=1着, 02=2着...ゼロパディング2桁）",
+            "Ninki": "人気（01=1番人気, 02=2番人気...ゼロパディング2桁）",
             "Odds": "単勝オッズ",
             "HaronTimeL3": "上がり3F（0.1秒単位、例: 334=33.4秒）",
             "BaTaijyu": "馬体重",
-            # 注意: Bamei1は父馬名ではない。Bamei2/3は存在しない。血統情報はNL_UMを使用
+            # 注意: Bamei1は対戦相手の馬名（1着馬→2着馬、2着以下→1着馬）。KettoNum1も同様。血統情報はNL_UMを使用
         },
     },
-    "NL_UM": {"description": "馬マスタ", "primary_keys": ["KettoNum"], "key_columns": {"Bamei": "馬名", "Ketto3InfoBamei1": "父馬名", "Ketto3InfoBamei2": "母馬名", "Ketto3InfoBamei5": "母父馬名"}},
+    "NL_UM": {"description": "馬マスタ（JRA中央競馬のみ。地方競馬はJOIN不可）", "primary_keys": ["KettoNum"], "key_columns": {"Bamei": "馬名", "Ketto3InfoBamei1": "父馬名", "Ketto3InfoBamei2": "母馬名", "Ketto3InfoBamei5": "母父馬名"}},
     "NL_KS": {"description": "騎手マスタ", "primary_keys": ["KisyuCode"], "key_columns": {}},
     "NL_CH": {"description": "調教師マスタ", "primary_keys": ["ChokyosiCode"], "key_columns": {}},
     "NL_HR": {"description": "払戻テーブル", "primary_keys": [], "key_columns": {}},
     "NL_O1": {"description": "単勝複勝オッズ", "primary_keys": [], "key_columns": {}},
+    "NL_WE": {"description": "馬場状態テーブル（現在データ空、0B11/0B14/0B16 SPEC必要）", "primary_keys": [], "key_columns": {}},
 }
 
 TRACK_CODES = {"01": "札幌", "02": "函館", "03": "福島", "04": "新潟", "05": "東京", "06": "中山", "07": "中京", "08": "京都", "09": "阪神", "10": "小倉"}
@@ -49,7 +50,19 @@ TRACK_TYPE_CODES = {"1": "芝", "2": "ダート", "5": "障害"}
 SEX_CODES = {"1": "牡", "2": "牝", "3": "セン"}
 
 def get_schema_description():
-    return {"tables": JVLINK_TABLES, "track_codes": TRACK_CODES, "grade_codes": GRADE_CODES, "important_notes": ["★重要: KakuteiJyuni(着順)とNinki(人気)はゼロパディング2桁（01,02...）", "★重要: JyoCD(競馬場)もゼロパディング（05=東京）", "すべてのカラムはTEXT型"]}
+    return {
+        "tables": JVLINK_TABLES,
+        "track_codes": TRACK_CODES,
+        "grade_codes": GRADE_CODES,
+        "important_notes": [
+            "KakuteiJyuni(着順)とNinki(人気)はゼロパディング2桁（01,02...）",
+            "JyoCD(競馬場)もゼロパディング（05=東京）",
+            "すべてのカラムはTEXT型",
+            "Bamei1/KettoNum1は対戦相手の情報（父馬ではない）",
+            "NL_WEテーブルは現在データ空（馬場状態分析不可）",
+            "地方競馬はNL_UMとJOIN不可",
+        ]
+    }
 
 def get_query_examples():
     return {
