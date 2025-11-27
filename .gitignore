@@ -57,3 +57,6 @@ htmlcov/
 *.db
 *.sqlite
 *.duckdb
+
+# MCP Bundle files (built artifacts)
+*.mcpb

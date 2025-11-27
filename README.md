@@ -44,30 +44,41 @@ SQLを書く必要はありません。自然な日本語で質問すれば、�
 
 ## インストール
 
-### 1. 必要なもの
+### 必要なもの
 
 - **Python 3.11以上**
-- **uv** (Pythonパッケージマネージャー)
 - **競馬データベース** - [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成
 
-### 2. このリポジトリをクローン
+### 方法1: .mcpbファイルで簡単インストール（推奨）
+
+1. [Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)からお使いのOS用の `.mcpb` ファイルをダウンロード
+   - `jvlink-mcp-server-x.x.x-win64.mcpb` - Windows
+   - `jvlink-mcp-server-x.x.x-macos-arm64.mcpb` - macOS (Apple Silicon)
+   - `jvlink-mcp-server-x.x.x-linux-x64.mcpb` - Linux
+2. ダウンロードした `.mcpb` ファイルをダブルクリック
+3. Claude Desktopのインストール画面でデータベースファイル（keiba.db）のパスを指定
+4. インストール完了
+
+### 方法2: 手動インストール
+
+<details>
+<summary>クリックして展開</summary>
+
+#### 1. リポジトリをクローン
 
 ```bash
 git clone https://github.com/miyamamoto/jvlink-mcp-server.git
 cd jvlink-mcp-server
 ```
 
-### 3. 依存関係をインストール
+#### 2. 依存関係をインストール
 
 ```bash
+pip install uv
 uv sync
 ```
 
-これでインストールは完了です。
-
-## Claude Desktop / Claude Code への接続
-
-### Claude Desktopで使う
+#### 3. Claude Desktopに接続
 
 `claude_desktop_config.json` に追加:
 
@@ -79,7 +90,7 @@ uv sync
       "args": [
         "run",
         "--directory",
-        "C:\Users\yourname\jvlink-mcp-server",
+        "C:\\Users\\yourname\\jvlink-mcp-server",
         "python",
         "-m",
         "jvlink_mcp_server.server"
@@ -95,7 +106,7 @@ uv sync
 
 パスは環境に合わせて変更してください。Claude Desktopを再起動すれば使えます。
 
-### Claude Codeで使う
+#### Claude Codeで使う場合
 
 ```bash
 claude mcp add jvlink \
@@ -103,6 +114,8 @@ claude mcp add jvlink \
   -e DB_PATH=/path/to/keiba.db \
   -- uv run --directory /path/to/jvlink-mcp-server python -m jvlink_mcp_server.server
 ```
+
+</details>
 
 ## 使い方のコツ
 

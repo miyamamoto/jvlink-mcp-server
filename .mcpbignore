@@ -1,0 +1,63 @@
+# Git
+.git/
+.gitignore
+
+# Development
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+.env.docker
+docker-start.bat
+docker-start.sh
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Documentation (not needed in bundle)
+docs/
+*.md
+!README.md
+
+# Shell scripts
+*.sh
+*.bat
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Environment
+.env
+.env.example
+.env.local
+
+# Temporary files
+nul
+*.tmp
+*.bak
+
+# Example files
+examples/
+claude_app_questions.md
