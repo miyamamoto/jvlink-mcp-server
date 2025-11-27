@@ -55,12 +55,30 @@ G1レースで1番人気が飛んだレースを教えて
 前走G1で負けた馬が次走G2以下で巻き返した例を教えて
 ```
 
-## セットアップ
+## インストール
 
-### 必要なもの
+### 1. 必要なもの
 
-1. **競馬データベース** - [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成
-2. **Claude Desktop** または **Claude Code**
+- **Python 3.11以上**
+- **uv** (Pythonパッケージマネージャー)
+- **競馬データベース** - [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成
+
+### 2. このリポジトリをクローン
+
+```bash
+git clone https://github.com/miyamamoto/jvlink-mcp-server.git
+cd jvlink-mcp-server
+```
+
+### 3. 依存関係をインストール
+
+```bash
+uv sync
+```
+
+これでインストールは完了です。
+
+## Claude Desktop / Claude Code への接続
 
 ### Claude Desktopで使う
 
