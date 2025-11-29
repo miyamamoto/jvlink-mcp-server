@@ -7,7 +7,7 @@
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
+# *.pyd  # Do NOT exclude - required for Windows
 .pytest_cache/
 .coverage
 htmlcov/
