@@ -64,13 +64,15 @@ SQLを書く必要はありません。自然な日本語で質問すれば、�
 
 ### 方法1: .mcpbファイルで簡単インストール（推奨）
 
-1. [Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)からお使いのOS用の `.mcpb` ファイルをダウンロード
-   - `jvlink-mcp-server-x.x.x-win64.mcpb` - Windows
-   - `jvlink-mcp-server-x.x.x-macos-arm64.mcpb` - macOS (Apple Silicon)
-   - `jvlink-mcp-server-x.x.x-linux-x64.mcpb` - Linux
+1. [Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)から `.mcpb` ファイルをダウンロード
 2. ダウンロードした `.mcpb` ファイルをダブルクリック
 3. Claude Desktopのインストール画面でデータベースファイル（keiba.db）のパスを指定
 4. インストール完了
+
+> **💡 初回起動について**
+>
+> 初回起動時に依存パッケージを自動インストールします（30〜60秒）。
+> インターネット接続が必要です。2回目以降は即座に起動します。
 
 ### 方法2: 手動インストール
 
