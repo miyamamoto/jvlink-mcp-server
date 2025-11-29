@@ -40,9 +40,7 @@
   "compatibility": {
     "claude_desktop": ">=0.10.0",
     "platforms": [
-      "win32",
-      "darwin",
-      "linux"
+      "win32"
     ],
     "runtimes": {
       "python": ">=3.11"
