@@ -1,4 +1,4 @@
-name: Build MCPB Bundles
+name: Build MCPB Bundle
 
 on:
   push:
@@ -13,20 +13,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            platform: win64
-            python-arch: x64
-          - os: macos-14
-            platform: macos-arm64
-            python-arch: arm64
-          - os: ubuntu-latest
-            platform: linux-x64
-            python-arch: x64
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -36,7 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          architecture: ${{ matrix.python-arch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,19 +32,8 @@ jobs:
       - name: Install mcpb CLI
         run: npm install -g @anthropic-ai/mcpb
 
-      - name: Add npm bin to PATH (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $npmPrefix = npm config get prefix
-          echo "$npmPrefix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify mcpb installation
-        run: npx mcpb --version
-
       - name: Get version
         id: version
-        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
@@ -66,13 +41,13 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build bundle using Python script
-        run: python scripts/build_bundle.py --platform ${{ matrix.platform }} --version ${{ steps.version.outputs.version }}
+      - name: Build universal bundle
+        run: python scripts/build_bundle.py --version ${{ steps.version.outputs.version }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-${{ matrix.platform }}
+          name: jvlink-mcp-server-bundle
           path: "*.mcpb"
           retention-days: 30
 
@@ -84,11 +59,11 @@ jobs:
       contents: write
 
     steps:
-      - name: Download all artifacts
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
+          name: jvlink-mcp-server-bundle
           path: bundles
-          merge-multiple: true
 
       - name: List bundles
         run: ls -la bundles/
@@ -100,5 +75,23 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## JVLink MCP Server ${{ github.ref_name }}
+
+            ### インストール方法
+
+            1. 下の `.mcpb` ファイルをダウンロード
+            2. ダウンロードしたファイルをダブルクリック
+            3. Claude Desktopの画面でデータベースファイル（keiba.db）のパスを指定
+
+            ### 必要要件
+
+            - Python 3.11 以上
+            - 競馬データベース（[jrvltsql](https://github.com/miyamamoto/jrvltsql)で作成）
+
+            ### 注意
+
+            初回起動時に依存パッケージを自動インストールします（30〜60秒）。
+            インターネット接続が必要です。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

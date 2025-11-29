@@ -2,12 +2,16 @@
 .git/
 .gitignore
 
+# Dependencies (installed at runtime by run_server.py)
+lib/
+*.pyd
+*.so
+
 # Development
 .venv/
 __pycache__/
 *.pyc
 *.pyo
-# *.pyd  # Do NOT exclude - required for Windows
 .pytest_cache/
 .coverage
 htmlcov/
@@ -39,14 +43,16 @@ docs/
 *.md
 !README.md
 
-# Shell scripts
+# Shell scripts (except run_server.py which is the entry point)
 *.sh
 *.bat
+*.ps1
 
 # Build artifacts
 dist/
 build/
 *.egg-info/
+*.mcpb
 
 # Environment
 .env
@@ -61,3 +67,7 @@ nul
 # Example files
 examples/
 claude_app_questions.md
+
+# Misc
+uv.lock
+.python-version

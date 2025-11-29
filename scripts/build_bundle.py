@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Build platform-specific .mcpb bundles for jvlink-mcp-server.
+Build universal .mcpb bundle for jvlink-mcp-server.
+
+This creates a single bundle that works on all platforms (Windows, macOS, Linux)
+and all Python versions (3.11+). Dependencies are installed automatically on
+first run using pip.
 
 Usage:
-    python scripts/build_bundle.py [--platform PLATFORM] [--version VERSION]
-
-Platforms: win64, macos-arm64, linux-x64
+    python scripts/build_bundle.py [--version VERSION]
 """
 
 import argparse
@@ -77,43 +79,8 @@ def get_mcpb_command() -> list[str]:
     )
 
 
-# Platform configurations
-PLATFORM_CONFIG = {
-    "win64": {
-        "compatibility_platform": "win32",
-        "path_separator": ";",
-    },
-    "macos-arm64": {
-        "compatibility_platform": "darwin",
-        "path_separator": ":",
-    },
-    "linux-x64": {
-        "compatibility_platform": "linux",
-        "path_separator": ":",
-    },
-}
-
-
-def detect_platform() -> str:
-    """Detect current platform."""
-    system = platform.system().lower()
-    machine = platform.machine().lower()
-
-    if system == "windows":
-        return "win64"
-    elif system == "darwin":
-        if machine == "arm64":
-            return "macos-arm64"
-        return "macos-x64"
-    elif system == "linux":
-        return "linux-x64"
-    else:
-        raise RuntimeError(f"Unsupported platform: {system} {machine}")
-
-
-def generate_manifest(version: str, platform_name: str, project_dir: Path) -> dict:
-    """Generate platform-specific manifest.json."""
-    config = PLATFORM_CONFIG[platform_name]
+def generate_manifest(version: str, project_dir: Path) -> dict:
+    """Generate universal manifest.json."""
 
     manifest = {
         "manifest_version": "0.3",
@@ -128,7 +95,8 @@ def generate_manifest(version: str, platform_name: str, project_dir: Path) -> di
             "例えば:\n"
             "- 「1番人気の勝率はどのくらい？」\n"
             "- 「今年勝ち星が多い騎手は？」\n"
-            "- 「東京芝1600mで内枠と外枠、どっちが有利？」"
+            "- 「東京芝1600mで内枠と外枠、どっちが有利？」\n\n"
+            "初回起動時に依存パッケージを自動インストールします（30〜60秒）。"
         ),
         "author": {
             "name": "miyamamoto",
@@ -142,12 +110,11 @@ def generate_manifest(version: str, platform_name: str, project_dir: Path) -> di
         "license": "Apache-2.0",
         "server": {
             "type": "python",
-            "entry_point": "src/jvlink_mcp_server/server.py",
+            "entry_point": "run_server.py",
             "mcp_config": {
                 "command": "python",
-                "args": ["-m", "jvlink_mcp_server.server"],
+                "args": ["run_server.py"],
                 "env": {
-                    "PYTHONPATH": f"${{__dirname}}/lib{config['path_separator']}${{__dirname}}/src",
                     "DB_TYPE": "sqlite",
                     "DB_PATH": "${user_config.database_path}"
                 }
@@ -163,7 +130,7 @@ def generate_manifest(version: str, platform_name: str, project_dir: Path) -> di
         },
         "compatibility": {
             "claude_desktop": ">=0.10.0",
-            "platforms": [config["compatibility_platform"]],
+            "platforms": ["win32", "darwin", "linux"],
             "runtimes": {
                 "python": ">=3.11"
             }
@@ -182,61 +149,35 @@ def generate_manifest(version: str, platform_name: str, project_dir: Path) -> di
     return manifest
 
 
-def install_dependencies(lib_dir: Path) -> None:
-    """Install Python dependencies to lib directory."""
-    print(f"Installing dependencies to {lib_dir}...")
+def prepare_bundle_directory(project_dir: Path) -> None:
+    """Prepare the project directory for bundling."""
+    lib_dir = project_dir / "lib"
 
-    # Clean existing lib directory
+    # Clean existing lib directory (dependencies will be installed at runtime)
     if lib_dir.exists():
         shutil.rmtree(lib_dir)
-    lib_dir.mkdir(parents=True)
 
-    # Install dependencies
-    dependencies = [
-        "duckdb>=1.1.0",
-        "mcp[cli]>=1.1.0",
-        "pandas>=2.0.0",
-        "python-dotenv>=1.0.0",
-    ]
+    # Create empty lib directory with .gitkeep
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    (lib_dir / ".gitkeep").touch()
 
-    cmd = [
-        sys.executable, "-m", "pip", "install",
-        "--target", str(lib_dir),
-        "--quiet",
-        *dependencies
-    ]
-
-    subprocess.run(cmd, check=True)
-    print(f"Dependencies installed to {lib_dir}")
-
-    # Clean up unnecessary files
-    cleanup_patterns = ["__pycache__", "*.pyc", "*.pyo", "tests", "test"]
-    for pattern in cleanup_patterns:
-        for path in lib_dir.rglob(pattern):
-            if path.is_dir():
-                shutil.rmtree(path, ignore_errors=True)
-            elif path.is_file():
-                path.unlink(missing_ok=True)
-
-    # Calculate size
-    total_size = sum(f.stat().st_size for f in lib_dir.rglob("*") if f.is_file())
-    print(f"Dependencies size: {total_size / 1024 / 1024:.1f} MB")
+    print("Prepared lib/ directory (dependencies will be installed at runtime)")
 
 
-def build_bundle(project_dir: Path, platform_name: str, version: str) -> Path:
-    """Build the .mcpb bundle."""
+def build_bundle(project_dir: Path, version: str) -> Path:
+    """Build the universal .mcpb bundle."""
 
     # Get mcpb command
     mcpb_cmd = get_mcpb_command()
     print(f"Using mcpb: {' '.join(mcpb_cmd)}")
 
     # Generate manifest
-    manifest = generate_manifest(version, platform_name, project_dir)
+    manifest = generate_manifest(version, project_dir)
     manifest_path = project_dir / "manifest.json"
 
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
-    print(f"Generated manifest.json for {platform_name}")
+    print("Generated universal manifest.json")
 
     # On Windows, use shell=True for .cmd files
     use_shell = platform.system() == "Windows"
@@ -249,9 +190,9 @@ def build_bundle(project_dir: Path, platform_name: str, version: str) -> Path:
     print("Building bundle...")
     subprocess.run([*mcpb_cmd, "pack", "."], check=True, cwd=project_dir, shell=use_shell)
 
-    # Rename with platform suffix
+    # Rename with version (no platform suffix for universal bundle)
     default_name = project_dir / "jvlink-mcp-server.mcpb"
-    final_name = project_dir / f"jvlink-mcp-server-{version}-{platform_name}.mcpb"
+    final_name = project_dir / f"jvlink-mcp-server-{version}.mcpb"
 
     if final_name.exists():
         final_name.unlink()
@@ -266,54 +207,42 @@ def build_bundle(project_dir: Path, platform_name: str, version: str) -> Path:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build jvlink-mcp-server .mcpb bundle")
-    parser.add_argument(
-        "--platform",
-        choices=list(PLATFORM_CONFIG.keys()),
-        default=None,
-        help="Target platform (default: auto-detect)"
-    )
+    parser = argparse.ArgumentParser(description="Build universal jvlink-mcp-server .mcpb bundle")
     parser.add_argument(
         "--version",
         default="0.1.0",
         help="Version string (default: 0.1.0)"
     )
-    parser.add_argument(
-        "--skip-deps",
-        action="store_true",
-        help="Skip installing dependencies (use existing lib/)"
-    )
 
     args = parser.parse_args()
 
-    # Detect platform if not specified
-    platform_name = args.platform or detect_platform()
-    print(f"Building for platform: {platform_name}")
-
     # Project directory
     project_dir = Path(__file__).parent.parent.resolve()
-    lib_dir = project_dir / "lib"
 
+    print("=" * 50)
+    print("Building Universal MCPB Bundle")
+    print("=" * 50)
     print(f"Project directory: {project_dir}")
     print(f"Version: {args.version}")
     print()
+    print("This bundle works on all platforms (Windows, macOS, Linux)")
+    print("and all Python versions (3.11+).")
+    print()
 
-    # Install dependencies
-    if not args.skip_deps:
-        install_dependencies(lib_dir)
-    else:
-        print("Skipping dependency installation (--skip-deps)")
-
+    # Prepare bundle directory
+    prepare_bundle_directory(project_dir)
     print()
 
     # Build bundle
-    bundle_path = build_bundle(project_dir, platform_name, args.version)
+    bundle_path = build_bundle(project_dir, args.version)
 
     print()
     print("=" * 50)
     print(f"Build complete: {bundle_path.name}")
     print(f"Size: {bundle_path.stat().st_size / 1024 / 1024:.1f} MB")
     print("=" * 50)
+    print()
+    print("Note: Dependencies will be automatically installed on first run.")
 
 
 if __name__ == "__main__":
