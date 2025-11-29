@@ -42,127 +42,82 @@ SQLを書く必要はありません。自然な日本語で質問すれば、�
 - 馬体重500kg以上の馬の成績は？
 - 上がり3F最速で勝った馬を調べて
 
-## 構成パターン
+---
 
-JV-Linkデータの取得にはWindowsが必要ですが、利用環境に応じて以下の構成が可能です。
+## クイックスタート（Windows）
+
+**3ステップで使い始められます**
+
+### Step 1: 競馬データベースを作成
+
+[jrvltsql](https://github.com/miyamamoto/jrvltsql) を使ってJRA-VANからデータを取得し、`keiba.db`を作成します。
+
+### Step 2: MCPサーバーをインストール
+
+[Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)から `.mcpb` ファイルをダウンロードしてダブルクリック。
+
+### Step 3: データベースを指定
+
+Claude Desktopのインストール画面で`keiba.db`のパスを指定して完了！
+
+> **💡 初回起動時**に依存パッケージを自動インストールします（30〜60秒）。
+
+---
+
+## Mac / Linux で使う場合
+
+JRA-VANのデータ取得（jrvltsql）はWindows専用ですが、**データベースをMac/Linuxに持ってくれば**このMCPサーバーは動作します。
+
+### 方法1: SQLiteファイルをコピー
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ パターン A: Windows完結（推奨）                                   │
-│                                                                 │
-│   Windows PC                                                    │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│   │  jrvltsql   │───▶│  keiba.db   │◀───│ MCPサーバー  │        │
-│   │ (データ取得) │    │  (SQLite)   │    │             │        │
-│   └─────────────┘    └─────────────┘    └──────┬──────┘        │
-│                                                 │               │
-│                                        ┌───────▼───────┐       │
-│                                        │ Claude Desktop │       │
-│                                        └───────────────┘       │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ パターン B: DBファイルをコピー                                    │
-│                                                                 │
-│   Windows PC                           Mac / Linux              │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│   │  jrvltsql   │───▶│  keiba.db   │─┬─▶│  keiba.db   │        │
-│   │ (データ取得) │    │  (SQLite)   │ │  │  (コピー)   │        │
-│   └─────────────┘    └─────────────┘ │  └──────┬──────┘        │
-│                                      │         │               │
-│                        ファイル共有/  │  ┌──────▼──────┐        │
-│                        クラウド同期   │  │ MCPサーバー  │        │
-│                                      │  └──────┬──────┘        │
-│                                      │         │               │
-│                                      │  ┌──────▼──────┐        │
-│                                      │  │Claude Desktop│        │
-│                                      │  └─────────────┘        │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│ パターン C: PostgreSQL経由                                       │
-│                                                                 │
-│   Windows PC                           Mac / Linux              │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│   │  jrvltsql   │───▶│ PostgreSQL  │◀───│ MCPサーバー  │        │
-│   │ (データ取得) │    │  サーバー   │    │             │        │
-│   └─────────────┘    └─────────────┘    └──────┬──────┘        │
-│                            ▲                   │               │
-│                            │ネットワーク        │               │
-│                            │                   │               │
-│                                         ┌──────▼──────┐        │
-│                                         │Claude Desktop│        │
-│                                         └─────────────┘        │
-└─────────────────────────────────────────────────────────────────┘
+Windows                          Mac / Linux
+┌─────────────┐                  ┌─────────────┐
+│  jrvltsql   │                  │  keiba.db   │ ← コピー
+│      ↓      │   ファイル共有    │      ↓      │
+│  keiba.db   │ ───────────────▶ │ MCPサーバー  │
+└─────────────┘   クラウド同期    │      ↓      │
+                                 │Claude Desktop│
+                                 └─────────────┘
 ```
 
-| パターン | メリット | デメリット |
-|---------|---------|-----------|
-| **A: Windows完結** | セットアップが簡単、.mcpbで一発インストール | WindowsでClaude Desktopを使う必要がある |
-| **B: DBファイルコピー** | Mac/LinuxでClaude Desktopを使える | DBの更新のたびにコピーが必要 |
-| **C: PostgreSQL経由** | リアルタイムでデータ更新を反映 | PostgreSQLサーバーの構築・運用が必要 |
+Dropbox、Google Drive、USBメモリなどで`keiba.db`をコピーするだけ。
+データ更新時は再度コピーが必要です。
 
-## インストール
+### 方法2: PostgreSQL経由（リアルタイム更新）
 
-### 必要なもの
+```
+Windows                          Mac / Linux
+┌─────────────┐                  ┌─────────────┐
+│  jrvltsql   │                  │ MCPサーバー  │
+│      ↓      │    ネットワーク   │      ↓      │
+│ PostgreSQL  │ ◀───────────────│Claude Desktop│
+└─────────────┘                  └─────────────┘
+```
 
-- **Python 3.11以上**
-- **競馬データベース** - [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成
+jrvltsqlはPostgreSQLへの書き込みにも対応。
+Mac/LinuxからWindowsのPostgreSQLに接続すればリアルタイムで最新データを利用できます。
 
-### 方法1: .mcpbで簡単インストール（パターンA: Windows完結）
-
-Windowsで全てを完結させる最もシンプルな方法です。
-
-1. [Releases](https://github.com/miyamamoto/jvlink-mcp-server/releases)から `.mcpb` ファイルをダウンロード
-2. ダウンロードした `.mcpb` ファイルをダブルクリック
-3. Claude Desktopのインストール画面でデータベースファイル（keiba.db）のパスを指定
-4. インストール完了
-
-> **💡 初回起動について**
->
-> 初回起動時に依存パッケージを自動インストールします（30〜60秒）。
-> インターネット接続が必要です。2回目以降は即座に起動します。
-
-### 方法2: 手動インストール（パターンB/C、またはWindows以外）
-
-Mac/LinuxでClaude Desktopを使う場合や、リモートDBに接続する場合はこちら。
-
-<details>
-<summary>クリックして展開</summary>
-
-#### 1. リポジトリをクローン
+### Mac / Linux でのセットアップ
 
 ```bash
+# 1. リポジトリをクローン
 git clone https://github.com/miyamamoto/jvlink-mcp-server.git
 cd jvlink-mcp-server
-```
 
-#### 2. 依存関係をインストール
-
-```bash
+# 2. 依存関係をインストール
 pip install uv
 uv sync
 ```
 
-#### 3. Claude Desktopに接続
-
 `claude_desktop_config.json` に追加:
-
-**パターンA/B（SQLite）の場合:**
 
 ```json
 {
   "mcpServers": {
     "jvlink": {
       "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/path/to/jvlink-mcp-server",
-        "python",
-        "-m",
-        "jvlink_mcp_server.server"
-      ],
+      "args": ["run", "--directory", "/path/to/jvlink-mcp-server", "python", "-m", "jvlink_mcp_server.server"],
       "env": {
         "DB_TYPE": "sqlite",
         "DB_PATH": "/path/to/keiba.db"
@@ -172,21 +127,15 @@ uv sync
 }
 ```
 
-**パターンC（PostgreSQL）の場合:**
+<details>
+<summary>PostgreSQLを使う場合の設定</summary>
 
 ```json
 {
   "mcpServers": {
     "jvlink": {
       "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/path/to/jvlink-mcp-server",
-        "python",
-        "-m",
-        "jvlink_mcp_server.server"
-      ],
+      "args": ["run", "--directory", "/path/to/jvlink-mcp-server", "python", "-m", "jvlink_mcp_server.server"],
       "env": {
         "DB_TYPE": "postgresql",
         "DB_HOST": "your-windows-pc.local",
@@ -200,60 +149,30 @@ uv sync
 }
 ```
 
-パスは環境に合わせて変更してください。Claude Desktopを再起動すれば使えます。
-
-#### Claude Codeで使う場合
-
-```bash
-claude mcp add jvlink \
-  -e DB_TYPE=sqlite \
-  -e DB_PATH=/path/to/keiba.db \
-  -- uv run --directory /path/to/jvlink-mcp-server python -m jvlink_mcp_server.server
-```
-
 </details>
+
+---
 
 ## 使い方のコツ
 
-### 1. まずは気軽に質問
-思いついたことをそのまま聞いてみてください。Claudeが適切なデータを探して回答します。
+| コツ | 説明 |
+|-----|------|
+| **気軽に質問** | 思いついたことをそのまま聞いてみてください |
+| **条件を追加** | 「東京の」「芝の」「1600mの」など条件を絞ると詳細な分析に |
+| **比較を依頼** | 「AとBを比較して」「年度別の推移を見せて」も得意です |
+| **深掘りする** | 回答を見て気になったら続けて質問。会話で分析を深められます |
 
-### 2. 具体的な条件を追加
-「東京の」「芝の」「1600mの」「G1の」など、条件を追加するとより詳細な分析ができます。
+→ もっと質問例を見たい場合は [サンプル質問集](docs/SAMPLE_QUESTIONS.md)
 
-### 3. 比較を依頼
-「AとBを比較して」「年度別に推移を見せて」など、比較分析も得意です。
-
-### 4. 深掘りする
-回答を見て気になったことがあれば、続けて質問してください。会話の流れで分析を深められます。
-
-## もっと詳しく
-
-### 質問例をもっと見たい
-→ [サンプル質問集](docs/SAMPLE_QUESTIONS.md)
-
-初級から上級まで、200以上の質問例があります。
-
-### 技術的な詳細を知りたい
-→ [データベース構成](docs/DATABASE_SETUP.md) / [クエリガイドライン](QUERY_GUIDELINES.md)
-
-開発者向けの技術情報です。
+---
 
 ## JRA-VANデータの利用について
 
-本ソフトウェアで分析するデータは[JRA-VAN](https://jra-van.jp/)から提供されるものであり、利用にあたっては**JRA-VAN利用規約**に従う必要があります。
+本ソフトウェアで分析するデータは[JRA-VAN](https://jra-van.jp/)から提供されるものです。
 
-### 禁止事項
+**禁止事項:** データの再配布、第三者への提供、データベースファイルの共有
 
-- データの再配布
-- データの複製・編集・配信
-- 第三者へのデータ提供
-- データベースファイル（keiba.db等）の共有
-
-### 許可される利用
-
-- 個人的な競馬分析・研究
-- 自社内での利用
+**許可される利用:** 個人的な競馬分析・研究、自社内での利用
 
 詳細は [JRA-VAN利用規約](https://jra-van.jp/info/rule.html) をご確認ください。
 
