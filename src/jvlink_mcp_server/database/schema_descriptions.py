@@ -67,33 +67,35 @@ COLUMN_DESCRIPTIONS = {
     },
     # === NL_SE (出馬表) ===
     "NL_SE": {
-        "Umaban": "馬番",
-        "Wakuban": "枠番",
+        "Umaban": "馬番 (INTEGER, 1-18)",
+        "Wakuban": "枠番 (INTEGER, 1-8)",
         "KettoNum": "血統登録番号（馬の一意識別子）",
         "Bamei": "馬名",
         "SexCD": "性別コード（1=牡, 2=牝, 3=セン）",
-        "Barei": "馬齢",
+        "Barei": "馬齢 (INTEGER)",
         "KisyuCode": "騎手コード",
         "KisyuRyakusyo": "騎手名略称",
         "ChokyosiCode": "調教師コード",
         "ChokyosiRyakusyo": "調教師名略称",
-        "Futan": "斤量（kg）",
-        "Ninki": "人気順位（ゼロパディング2桁: 01=1番人気）",
-        "Odds": "単勝オッズ",
+        "Futan": "斤量 (REAL, kg)",
+        "Ninki": "人気順位 (INTEGER, 1=1番人気, 2=2番人気...)",
+        "Odds": "単勝オッズ (REAL)",
         "ZogenFugo": "増減記号（+, -, ±）",
-        "ZogenSa": "増減差（馬体重の増減、kg）",
+        "ZogenSa": "増減差 (REAL, 馬体重の増減kg)",
         "IJyoCD": "異常区分コード（取消、除外、中止など）",
-        "KakuteiJyuni": "確定着順（ゼロパディング2桁: 01=1着,02=2着）",
-        "Time": "走破タイム（MMSSf形式、例：010435=1分04秒35）",
+        "KakuteiJyuni": "確定着順 (INTEGER, 1=1着, 2=2着...)",
+        "Time": "走破タイム (REAL, 秒)",
         "ChakusaCD": "着差コード（1=ハナ, 2=クビ, 3=1/2馬身, etc.）",
-        "HaronTimeL3": "上がり3Fタイム",
-        "Jyuni1c": "1コーナー通過順位",
-        "Jyuni2c": "2コーナー通過順位",
-        "Jyuni3c": "3コーナー通過順位",
-        "Jyuni4c": "4コーナー通過順位",
-        "BaTaijyu": "馬体重（kg）",
+        "HaronTimeL3": "上がり3Fタイム (REAL, 秒)",
+        "HaronTimeL4": "上がり4Fタイム (REAL, 秒)",
+        "Jyuni1c": "1コーナー通過順位 (INTEGER)",
+        "Jyuni2c": "2コーナー通過順位 (INTEGER)",
+        "Jyuni3c": "3コーナー通過順位 (INTEGER)",
+        "Jyuni4c": "4コーナー通過順位 (INTEGER)",
+        "BaTaijyu": "馬体重 (REAL, kg)",
         "Bamei1": "対戦相手の馬名（1着馬は2着馬、2着以下は1着馬の名前）。父馬名ではない。血統情報はNL_UMを使用",
         "KettoNum1": "対戦相手の血統登録番号（1着馬は2着馬、2着以下は1着馬）。父馬の血統番号ではない",
+        "TimeDiff": "タイム差 (REAL, 秒)",
     },
     # === NL_UM (馬マスタ) ===
     "NL_UM": {
@@ -163,6 +165,18 @@ CODE_MAPPINGS = {
 QUERY_GENERATION_HINTS = """
 ## JVLinkデータベースでのクエリ生成ヒント
 
+### データ型について（重要）
+
+jrvltsql v2.0以降では適切な型が使用されています：
+- INTEGER: KakuteiJyuni(着順), Ninki(人気), Umaban(馬番), Wakuban(枠番), Year, Kyori(距離), Barei(馬齢)
+- REAL: Odds(オッズ), Time(タイム), HaronTimeL3(上がり3F), BaTaijyu(馬体重), Futan(斤量)
+- TEXT: JyoCD(競馬場コード), GradeCD(グレード), Bamei(馬名), KettoNum(血統番号)
+
+クエリ例：
+- 1番人気: WHERE Ninki = 1 （文字列ではなく数値）
+- 1着: WHERE KakuteiJyuni = 1
+- 東京: WHERE JyoCD = '05' （コードは文字列のまま）
+
 ### 主要な結合パターン
 
 1. レース情報 + 出馬表: NL_RA JOIN NL_SE ON 6カラム
@@ -174,18 +188,11 @@ QUERY_GENERATION_HINTS = """
 #### NL_SE.Bamei1/KettoNum1について
 - Bamei1: 対戦相手の馬名（1着馬は2着馬、2着以下は1着馬）。父馬名ではない
 - KettoNum1: 対戦相手の血統登録番号。父馬の血統番号ではない
-- Bamei2/Bamei3/KettoNum2/KettoNum3: これらのカラムは存在しない
 - 血統情報は必ずNL_UMテーブルを使用すること
-
-#### 馬場状態データ（NL_WE）
-- NL_WEテーブルは現在データが空です
-- JVLinkの0B11/0B14/0B16 SPECでの取得が必要（現在未対応）
-- 馬場状態での分析は現時点では対応不可
 
 #### 地方競馬のJOIN制限
 - NL_SE + NL_UM のJOINはJRA中央競馬のみ100%マッチ
 - 地方競馬（JyoCD > 10）はNL_UMにデータがないためJOIN不可
-- 地方競馬の血統分析は現時点では対応不可
 """
 
 
