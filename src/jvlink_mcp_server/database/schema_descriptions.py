@@ -7,17 +7,19 @@ LLMがより正確にクエリを生成できるようにするための情報�
 from .schema_auto_descriptions import generate_column_description as auto_generate
 
 # テーブルの説明
+# テーブルプレフィックス: NL_=蓄積系（確定）、RT_=速報系（当日）、TS_=時系列オッズ
 TABLE_DESCRIPTIONS = {
+    # === 蓄積系 (NL_) ===
     "NL_RA": {
-        "description": "レース情報テーブル - 各レースの基本情報、条件、グレード等",
+        "description": "レース情報テーブル（確定） - 各レースの基本情報、条件、グレード等",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
     },
     "NL_SE": {
-        "description": "出馬表テーブル - レース出走馬情報、結果、オッズ、枠番等",
+        "description": "出馬表テーブル（確定） - レース出走馬情報、結果、オッズ、枠番等",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
     },
     "NL_UM": {
-        "description": "馬マスタテーブル - 馬の基本情報、血統情報、生産者等。NL_SE.KettoNumでJOIN可能（JRA中央競馬のみ。地方競馬はマッチしない）",
+        "description": "馬マスタテーブル - 馬の基本情報、血統情報、生産者等。NL_SE.KettoNumでJOIN可能（JRA中央競馬のみ）",
         "primary_keys": ["KettoNum"],
     },
     "NL_KS": {
@@ -29,17 +31,41 @@ TABLE_DESCRIPTIONS = {
         "primary_keys": ["ChokyosiCode"],
     },
     "NL_HR": {
-        "description": "払戻テーブル - レースの払戻情報",
+        "description": "払戻テーブル（確定） - レースの払戻情報",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
     },
-    "NL_O1": {
-        "description": "単勝・複勝オッズテーブル",
+    "NL_O1": {"description": "単勝・複勝オッズ（確定）", "primary_keys": []},
+    "NL_O2": {"description": "馬連オッズ（確定）", "primary_keys": []},
+    "NL_O3": {"description": "ワイドオッズ（確定）", "primary_keys": []},
+    "NL_O4": {"description": "馬単オッズ（確定）", "primary_keys": []},
+    "NL_O5": {"description": "3連複オッズ（確定）", "primary_keys": []},
+    "NL_O6": {"description": "3連単オッズ（確定）", "primary_keys": []},
+    # === 速報系 (RT_) ===
+    "RT_RA": {
+        "description": "レース情報テーブル（速報） - 当日のレース情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "RT_SE": {
+        "description": "出馬表テーブル（速報） - 当日の出走馬情報・結果",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
     },
-    "NL_WE": {
-        "description": "馬場状態テーブル - 現在未対応（テーブルは存在するがデータが空。JVLinkの0B11/0B14/0B16 SPECが必要）",
-        "primary_keys": [],
+    "RT_HR": {"description": "払戻テーブル（速報）", "primary_keys": []},
+    "RT_O1": {"description": "単勝・複勝オッズ（速報）", "primary_keys": []},
+    "RT_O2": {"description": "馬連オッズ（速報）", "primary_keys": []},
+    "RT_O3": {"description": "ワイドオッズ（速報）", "primary_keys": []},
+    "RT_O4": {"description": "馬単オッズ（速報）", "primary_keys": []},
+    "RT_O5": {"description": "3連複オッズ（速報）", "primary_keys": []},
+    "RT_O6": {"description": "3連単オッズ（速報）", "primary_keys": []},
+    # === 時系列オッズ (TS_) ===
+    "TS_O1": {
+        "description": "時系列単勝・複勝オッズ - オッズの時間推移を記録",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "HassoTime", "Umaban"],
     },
+    "TS_O2": {"description": "時系列馬連オッズ", "primary_keys": []},
+    "TS_O3": {"description": "時系列ワイドオッズ", "primary_keys": []},
+    "TS_O4": {"description": "時系列馬単オッズ", "primary_keys": []},
+    "TS_O5": {"description": "時系列3連複オッズ", "primary_keys": []},
+    "TS_O6": {"description": "時系列3連単オッズ", "primary_keys": []},
 }
 
 # カラムの説明（主要カラムのみ）
@@ -165,6 +191,12 @@ CODE_MAPPINGS = {
 QUERY_GENERATION_HINTS = """
 ## JVLinkデータベースでのクエリ生成ヒント
 
+### テーブルプレフィックス
+
+- NL_: 蓄積系（確定データ）- 過去の全データ
+- RT_: 速報系（当日データ）- 当日のみ
+- TS_: 時系列オッズ - オッズの時間推移
+
 ### データ型について（重要）
 
 jrvltsql v2.0以降では適切な型が使用されています：
@@ -182,6 +214,13 @@ jrvltsql v2.0以降では適切な型が使用されています：
 1. レース情報 + 出馬表: NL_RA JOIN NL_SE ON 6カラム
 2. 出馬表 + 馬マスタ: NL_SE JOIN NL_UM ON KettoNum
 3. 出馬表 + 騎手マスタ: NL_SE JOIN NL_KS ON KisyuCode
+
+### 速報系・時系列オッズの使い方
+
+- 当日のレース情報: RT_RA, RT_SE を使用
+- 過去データ分析: NL_RA, NL_SE を使用
+- オッズの時間推移: TS_O1〜TS_O6 を使用
+  - 例: SELECT HassoTime, TanOdds FROM TS_O1 WHERE ... ORDER BY HassoTime
 
 ### 重要な制限事項
 
