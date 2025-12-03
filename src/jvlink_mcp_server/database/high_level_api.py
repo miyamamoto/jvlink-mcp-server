@@ -70,14 +70,13 @@ def get_favorite_performance(
     conditions = []
     condition_desc = []
 
-    # 人気をゼロパディング
-    ninki_str = str(ninki).zfill(2)
-    conditions.append(f"Ninki = '{ninki_str}'")
+    # 人気（INTEGER型）
+    conditions.append(f"Ninki = {ninki}")
     condition_desc.append(f"{ninki}番人気")
 
     # 確定着順がNULLでない（レース確定済み）
     conditions.append("KakuteiJyuni IS NOT NULL")
-    conditions.append("KakuteiJyuni != ''")
+    conditions.append("KakuteiJyuni > 0")
 
     # 競馬場
     if venue:
@@ -95,15 +94,15 @@ def get_favorite_performance(
         conditions.append(f"r.GradeCD = '{grade_code}'")
         condition_desc.append(f"グレード{grade}")
 
-    # 年
+    # 年（INTEGER型）
     if year_from:
-        conditions.append(f"s.Year >= '{year_from}'")
+        conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
-    # 距離
+    # 距離（INTEGER型）
     if distance:
         # NL_RAテーブルのKyoriカラムと結合する必要がある
-        conditions.append(f"r.Kyori = '{distance}'")
+        conditions.append(f"r.Kyori = {distance}")
         condition_desc.append(f"{distance}m")
 
     # SQLクエリ構築
@@ -114,9 +113,9 @@ def get_favorite_performance(
         query = f"""
         SELECT
             COUNT(*) as total,
-            SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         JOIN NL_RA r
             ON s.Year = r.Year
@@ -131,9 +130,9 @@ def get_favorite_performance(
         query = f"""
         SELECT
             COUNT(*) as total,
-            SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         WHERE {where_clause}
         """
@@ -213,9 +212,9 @@ def get_jockey_stats(
     # 騎手名（部分一致）
     conditions.append(f"s.KisyuRyakusyo LIKE '%{jockey_name}%'")
 
-    # 確定着順がNULLでない
+    # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni != ''")
+    conditions.append("s.KakuteiJyuni > 0")
 
     # 競馬場
     if venue:
@@ -225,14 +224,14 @@ def get_jockey_stats(
         conditions.append(f"s.JyoCD = '{venue_code}'")
         condition_desc.append(f"{venue}競馬場")
 
-    # 年
+    # 年（INTEGER型）
     if year_from:
-        conditions.append(f"s.Year >= '{year_from}'")
+        conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
-    # 距離（NL_RAと結合が必要）
+    # 距離（INTEGER型、NL_RAと結合が必要）
     if distance:
-        conditions.append(f"r.Kyori = '{distance}'")
+        conditions.append(f"r.Kyori = {distance}")
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -243,9 +242,9 @@ def get_jockey_stats(
         SELECT
             s.KisyuRyakusyo as jockey_name,
             COUNT(*) as total_rides,
-            SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         JOIN NL_RA r
             ON s.Year = r.Year
@@ -262,9 +261,9 @@ def get_jockey_stats(
         SELECT
             KisyuRyakusyo as jockey_name,
             COUNT(*) as total_rides,
-            SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         WHERE {where_clause}
         GROUP BY KisyuRyakusyo
@@ -344,11 +343,11 @@ def get_frame_stats(
     conditions = []
     condition_desc = []
 
-    # 確定着順がNULLでない
+    # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni != ''")
+    conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.Wakuban IS NOT NULL")
-    conditions.append("s.Wakuban != ''")
+    conditions.append("s.Wakuban > 0")
 
     # 競馬場
     if venue:
@@ -358,14 +357,14 @@ def get_frame_stats(
         conditions.append(f"s.JyoCD = '{venue_code}'")
         condition_desc.append(f"{venue}競馬場")
 
-    # 年
+    # 年（INTEGER型）
     if year_from:
-        conditions.append(f"s.Year >= '{year_from}'")
+        conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
-    # 距離（NL_RAと結合が必要）
+    # 距離（INTEGER型、NL_RAと結合が必要）
     if distance:
-        conditions.append(f"r.Kyori = '{distance}'")
+        conditions.append(f"r.Kyori = {distance}")
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -376,9 +375,9 @@ def get_frame_stats(
         SELECT
             s.Wakuban as wakuban,
             COUNT(*) as total,
-            SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         JOIN NL_RA r
             ON s.Year = r.Year
@@ -396,9 +395,9 @@ def get_frame_stats(
         SELECT
             Wakuban as wakuban,
             COUNT(*) as total,
-            SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         WHERE {where_clause}
         GROUP BY Wakuban
@@ -456,13 +455,13 @@ def get_horse_history(
     # 馬名（部分一致）
     conditions.append(f"s.Bamei LIKE '%{horse_name}%'")
 
-    # 確定着順がNULLでない
+    # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni != ''")
+    conditions.append("s.KakuteiJyuni > 0")
 
-    # 年
+    # 年（INTEGER型）
     if year_from:
-        conditions.append(f"s.Year >= '{year_from}'")
+        conditions.append(f"s.Year >= {year_from}")
 
     where_clause = " AND ".join(conditions)
 
@@ -547,9 +546,9 @@ def get_sire_stats(
     # 種牡馬名（部分一致）
     conditions.append(f"s.Bamei1 LIKE '%{sire_name}%'")
 
-    # 確定着順がNULLでない
+    # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni != ''")
+    conditions.append("s.KakuteiJyuni > 0")
 
     # 競馬場
     if venue:
@@ -559,14 +558,14 @@ def get_sire_stats(
         conditions.append(f"s.JyoCD = '{venue_code}'")
         condition_desc.append(f"{venue}競馬場")
 
-    # 年
+    # 年（INTEGER型）
     if year_from:
-        conditions.append(f"s.Year >= '{year_from}'")
+        conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
-    # 距離（NL_RAと結合が必要）
+    # 距離（INTEGER型、NL_RAと結合が必要）
     if distance:
-        conditions.append(f"r.Kyori = '{distance}'")
+        conditions.append(f"r.Kyori = {distance}")
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -577,9 +576,9 @@ def get_sire_stats(
         SELECT
             s.Bamei1 as sire_name,
             COUNT(*) as total_runs,
-            SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         JOIN NL_RA r
             ON s.Year = r.Year
@@ -596,9 +595,9 @@ def get_sire_stats(
         SELECT
             Bamei1 as sire_name,
             COUNT(*) as total_runs,
-            SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02') THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
         WHERE {where_clause}
         GROUP BY Bamei1
