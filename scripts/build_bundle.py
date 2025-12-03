@@ -113,7 +113,7 @@ def generate_manifest(version: str, project_dir: Path) -> dict:
             "entry_point": "run_server.py",
             "mcp_config": {
                 "command": "python",
-                "args": ["run_server.py"],
+                "args": ["${__dirname}/run_server.py"],
                 "env": {
                     "DB_TYPE": "sqlite",
                     "DB_PATH": "${user_config.database_path}"

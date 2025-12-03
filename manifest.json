@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "jvlink-mcp-server",
   "display_name": "JVLink 競馬分析",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "JRA-VANデータを使った競馬分析MCPサーバー。自然言語で競馬データを分析できます。",
   "long_description": "Claudeに話しかけるだけで、競馬データを自由に分析できるMCPサーバーです。SQLを書く必要はありません。自然な日本語で質問すれば、過去のレース結果、騎手成績、血統傾向など、あらゆる競馬データを調べられます。\n\n例えば:\n- 「1番人気の勝率はどのくらい？」\n- 「今年勝ち星が多い騎手は？」\n- 「東京芝1600mで内枠と外枠、どっちが有利？」\n\n初回起動時に依存パッケージを自動インストールします（30〜60秒）。",
   "author": {
@@ -21,7 +21,7 @@
     "mcp_config": {
       "command": "python",
       "args": [
-        "run_server.py"
+        "${__dirname}/run_server.py"
       ],
       "env": {
         "DB_TYPE": "sqlite",
