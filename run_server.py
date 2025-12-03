@@ -53,8 +53,19 @@ def setup_paths() -> Path:
     return lib_dir
 
 
-def check_dependencies() -> bool:
+def check_dependencies(lib_dir: Path) -> bool:
     """Check if all native dependencies are available and compatible."""
+    # First check if lib directory has packages installed (fast check)
+    if not lib_dir.exists():
+        return False
+
+    # Check for key package directories as a quick indicator
+    key_packages = ["mcp", "duckdb", "pandas", "pydantic"]
+    installed_count = sum(1 for pkg in key_packages if (lib_dir / pkg).exists())
+    if installed_count < len(key_packages):
+        return False
+
+    # Then verify imports work
     for module in TEST_IMPORTS:
         try:
             importlib.import_module(module)
@@ -147,11 +158,11 @@ def main():
     lib_dir = setup_paths()
 
     # Check if dependencies are available and compatible
-    if not check_dependencies():
+    if not check_dependencies(lib_dir):
         install_dependencies(lib_dir)
 
         # Verify installation worked
-        if not check_dependencies():
+        if not check_dependencies(lib_dir):
             log("✗ 依存関係のインストール後もインポートに失敗しました")
             log("")
             log("手動で以下を実行してみてください:")
