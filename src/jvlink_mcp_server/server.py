@@ -358,9 +358,12 @@ def generate_sql_from_natural_language(query_text: str) -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(name="競馬データ検索")
 def execute_safe_query(sql_query: str) -> dict:
-    """安全なSQLクエリを実行（読み取り専用、自動修正機能付き）
+    """SQLで競馬データを自由に検索・分析できる万能ツール
+
+    人気別成績、騎手成績などの専用ツールでカバーできない分析はこのツールで実行できます。
+    レース結果、オッズ、血統、調教など、あらゆる競馬データにアクセス可能です。
 
     Args:
         sql_query: 実行するSQLクエリ（SELECTのみ）
@@ -433,7 +436,7 @@ def validate_sql_query(sql_query: str) -> dict:
 # High-level API (convenient analysis functions)
 # ============================================================================
 
-@mcp.tool()
+@mcp.tool(name="人気別成績")
 def analyze_favorite_performance(
     ninki: int = 1,
     venue: Optional[str] = None,
@@ -441,7 +444,11 @@ def analyze_favorite_performance(
     year_from: Optional[str] = None,
     distance: Optional[int] = None
 ) -> dict:
-    """人気別成績を分析（自動で正しいSQLを生成）"""
+    """指定した人気順位の馬の成績を分析
+
+    1番人気、2番人気など、人気順位別の勝率・複勝率を調べられます。
+    競馬場やグレード、距離でフィルタリングも可能です。
+    """
     with DatabaseConnection() as db:
         return _get_favorite_performance(
             db, venue=venue, ninki=ninki, grade=grade,
@@ -449,14 +456,18 @@ def analyze_favorite_performance(
         )
 
 
-@mcp.tool()
+@mcp.tool(name="騎手成績")
 def analyze_jockey_stats(
     jockey_name: str,
     venue: Optional[str] = None,
     year_from: Optional[str] = None,
     distance: Optional[int] = None
 ) -> dict:
-    """騎手成績を分析"""
+    """騎手の成績を分析
+
+    騎手名を指定して、勝率・複勝率・騎乗数などを調べられます。
+    競馬場や距離でのフィルタリングも可能です。
+    """
     with DatabaseConnection() as db:
         return _get_jockey_stats(
             db, jockey_name=jockey_name, venue=venue,
@@ -464,13 +475,17 @@ def analyze_jockey_stats(
         )
 
 
-@mcp.tool()
+@mcp.tool(name="枠番別成績")
 def analyze_frame_stats(
     venue: Optional[str] = None,
     distance: Optional[int] = None,
     year_from: Optional[str] = None
 ) -> dict:
-    """枠番別成績を分析"""
+    """枠番（1〜8枠）別の成績を分析
+
+    内枠・外枠の有利不利を調べられます。
+    競馬場や距離でフィルタリングすると、コース特性が見えます。
+    """
     with DatabaseConnection() as db:
         df = _get_frame_stats(db, venue=venue, distance=distance, year_from=year_from)
         return {
@@ -480,12 +495,15 @@ def analyze_frame_stats(
         }
 
 
-@mcp.tool()
+@mcp.tool(name="馬の戦績")
 def get_horse_race_history(
     horse_name: str,
     year_from: Optional[str] = None
 ) -> dict:
-    """馬の戦績を取得"""
+    """特定の馬の過去レース戦績を取得
+
+    馬名を指定して、過去の出走履歴・着順・タイムなどを一覧できます。
+    """
     with DatabaseConnection() as db:
         df = _get_horse_history(db, horse_name=horse_name, year_from=year_from)
         return {
@@ -496,14 +514,18 @@ def get_horse_race_history(
         }
 
 
-@mcp.tool()
+@mcp.tool(name="種牡馬成績")
 def analyze_sire_stats(
     sire_name: str,
     venue: Optional[str] = None,
     distance: Optional[int] = None,
     year_from: Optional[str] = None
 ) -> dict:
-    """種牡馬（父馬）成績を分析"""
+    """種牡馬（父馬）の産駒成績を分析
+
+    種牡馬名を指定して、産駒の勝率・複勝率を調べられます。
+    距離や競馬場でフィルタリングすると、血統の適性傾向が見えます。
+    """
     with DatabaseConnection() as db:
         return _get_sire_stats(
             db, sire_name=sire_name, venue=venue,
