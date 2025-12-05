@@ -68,6 +68,10 @@ nul
 examples/
 claude_app_questions.md
 
+# Test directories
+test-bundle/
+test-mcpb-install/
+
 # Misc
 uv.lock
 .python-version
