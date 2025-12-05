@@ -358,7 +358,7 @@ def generate_sql_from_natural_language(query_text: str) -> dict:
     }
 
 
-@mcp.tool(name="競馬データ検索")
+@mcp.tool(name="keiba_data_search")
 def execute_safe_query(sql_query: str) -> dict:
     """SQLで競馬データを自由に検索・分析できる万能ツール
 
@@ -436,7 +436,7 @@ def validate_sql_query(sql_query: str) -> dict:
 # High-level API (convenient analysis functions)
 # ============================================================================
 
-@mcp.tool(name="人気別成績")
+@mcp.tool(name="favorite_performance")
 def analyze_favorite_performance(
     ninki: int = 1,
     venue: Optional[str] = None,
@@ -456,7 +456,7 @@ def analyze_favorite_performance(
         )
 
 
-@mcp.tool(name="騎手成績")
+@mcp.tool(name="jockey_stats")
 def analyze_jockey_stats(
     jockey_name: str,
     venue: Optional[str] = None,
@@ -475,7 +475,7 @@ def analyze_jockey_stats(
         )
 
 
-@mcp.tool(name="枠番別成績")
+@mcp.tool(name="frame_stats")
 def analyze_frame_stats(
     venue: Optional[str] = None,
     distance: Optional[int] = None,
@@ -495,7 +495,7 @@ def analyze_frame_stats(
         }
 
 
-@mcp.tool(name="馬の戦績")
+@mcp.tool(name="horse_history")
 def get_horse_race_history(
     horse_name: str,
     year_from: Optional[str] = None
@@ -514,7 +514,7 @@ def get_horse_race_history(
         }
 
 
-@mcp.tool(name="種牡馬成績")
+@mcp.tool(name="sire_stats")
 def analyze_sire_stats(
     sire_name: str,
     venue: Optional[str] = None,
