@@ -5,6 +5,23 @@
 
 from typing import Any, Dict, List, Optional
 
+
+def _escape_like_param(value: str) -> str:
+    """LIKE句のパラメータをエスケープしてSQLインジェクションを防止
+
+    Args:
+        value: ユーザー入力値
+
+    Returns:
+        エスケープ済みの文字列
+    """
+    # シングルクォートをエスケープ
+    escaped = value.replace("'", "''")
+    # LIKE句の特殊文字をエスケープ
+    escaped = escaped.replace("%", "\\%")
+    escaped = escaped.replace("_", "\\_")
+    return escaped
+
 # 競馬場名→コードマッピング
 VENUE_NAME_TO_CODE = {
     "札幌": "01",
@@ -60,17 +77,16 @@ QUERY_TEMPLATES = {
         "sql": """
 SELECT
     COUNT(*) as total_races,
-    SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
+    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE
-WHERE Ninki = '{ninki}'
+WHERE Ninki = {ninki}
   {venue_condition}
   {year_condition}
   AND KakuteiJyuni IS NOT NULL
-  AND LENGTH(KakuteiJyuni) > 0
-  AND KakuteiJyuni != '00'
+  AND KakuteiJyuni > 0
 """,
     },
     "jockey_stats": {
@@ -97,15 +113,14 @@ WHERE Ninki = '{ninki}'
 SELECT
     KisyuRyakusyo as jockey_name,
     COUNT(*) as total_rides,
-    SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN KakuteiJyuni <= '02' THEN 1 ELSE 0 END) as top2,
-    SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
+    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(CASE WHEN KakuteiJyuni <= 2 THEN 1 ELSE 0 END) as top2,
+    SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE
 WHERE KakuteiJyuni IS NOT NULL
-  AND LENGTH(KakuteiJyuni) > 0
-  AND KakuteiJyuni != '00'
+  AND KakuteiJyuni > 0
   {jockey_condition}
   {year_condition}
 GROUP BY KisyuRyakusyo
@@ -131,14 +146,13 @@ LIMIT {limit}
 SELECT
     Wakuban as frame_number,
     COUNT(*) as total_runs,
-    SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = '01' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= '03' THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
+    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
+    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE
 WHERE KakuteiJyuni IS NOT NULL
-  AND LENGTH(KakuteiJyuni) > 0
-  AND KakuteiJyuni != '00'
+  AND KakuteiJyuni > 0
   {venue_condition}
   {kyori_condition}
 GROUP BY Wakuban
@@ -307,14 +321,13 @@ LIMIT 20
 SELECT
     s.Bamei1 as sire_name,
     COUNT(*) as total_runs,
-    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN s.KakuteiJyuni <= '03' THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni <= '03' THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
+    SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
+    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
+    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE s
 WHERE s.KakuteiJyuni IS NOT NULL
-  AND LENGTH(s.KakuteiJyuni) > 0
-  AND KakuteiJyuni != '00'
+  AND s.KakuteiJyuni > 0
   AND s.Bamei1 IS NOT NULL
   AND LENGTH(s.Bamei1) > 0
   {sire_condition}
@@ -339,9 +352,9 @@ SELECT
     s.Bamei as horse_name,
     r.TrackCD as track_code,
     COUNT(*) as total_runs,
-    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN s.KakuteiJyuni <= '03' THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
+    SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
+    ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
 FROM NL_SE s
 JOIN NL_RA r
   ON s.Year = r.Year
@@ -352,8 +365,7 @@ JOIN NL_RA r
   AND s.RaceNum = r.RaceNum
 WHERE s.Bamei LIKE '%{horse_name}%'
   AND s.KakuteiJyuni IS NOT NULL
-  AND LENGTH(s.KakuteiJyuni) > 0
-  AND s.KakuteiJyuni != '00'
+  AND s.KakuteiJyuni > 0
 GROUP BY s.Bamei, r.TrackCD
 ORDER BY total_runs DESC
 """,
@@ -361,9 +373,9 @@ ORDER BY total_runs DESC
 }
 
 
-def _zero_pad_ninki(ninki: int) -> str:
-    """人気順位をゼロパディング（01-18）"""
-    return str(ninki).zfill(2)
+def _to_int(value) -> int:
+    """値を整数に変換（INTEGER型カラム用）"""
+    return int(value)
 
 
 def _venue_to_code(venue_name: str) -> str:
@@ -423,11 +435,11 @@ def render_template(template_name: str, **params) -> str:
         if value is None:
             continue
 
-        # 人気順位の変換
+        # 人気順位の変換（INTEGER型）
         if key == "ninki":
-            formatted_params[key] = _zero_pad_ninki(int(value))
+            formatted_params[key] = _to_int(value)
 
-        # 競馬場名の変換
+        # 競馬場名の変換（エイリアス付き）
         elif key == "venue":
             formatted_params["venue_condition"] = f"AND JyoCD = '{_zero_pad_code(_venue_to_code(value))}'"
 
@@ -435,24 +447,26 @@ def render_template(template_name: str, **params) -> str:
         elif key == "grade":
             formatted_params["grade_condition"] = f"AND r.GradeCD = '{_grade_to_code(value)}'"
 
-        # 年の条件
+        # 年の条件（INTEGER型）
         elif key == "year":
-            formatted_params["year_condition"] = f"AND Year = '{value}'"
+            formatted_params["year_condition"] = f"AND Year = {_to_int(value)}"
 
         elif key == "year_from":
-            formatted_params["year_condition"] = f"AND Year >= '{value}'"
+            formatted_params["year_condition"] = f"AND Year >= {_to_int(value)}"
 
-        # 騎手名の条件
+        # 騎手名の条件 - SQLインジェクション対策済み
         elif key == "jockey_name":
-            formatted_params["jockey_condition"] = f"AND KisyuRyakusyo LIKE '%{value}%'"
+            safe_value = _escape_like_param(str(value))
+            formatted_params["jockey_condition"] = f"AND KisyuRyakusyo LIKE '%{safe_value}%' ESCAPE '\\'"
 
-        # 種牡馬名の条件
+        # 種牡馬名の条件 - SQLインジェクション対策済み
         elif key == "sire_name":
-            formatted_params["sire_condition"] = f"AND s.Bamei1 LIKE '%{value}%'"
+            safe_value = _escape_like_param(str(value))
+            formatted_params["sire_condition"] = f"AND s.Bamei1 LIKE '%{safe_value}%' ESCAPE '\\'"
 
-        # 距離の条件
+        # 距離の条件（INTEGER型）
         elif key == "kyori":
-            formatted_params["kyori_condition"] = f"AND Kyori = '{value}'"
+            formatted_params["kyori_condition"] = f"AND Kyori = {_to_int(value)}"
 
         # 競馬場コード（既にゼロパディング済みの場合）
         elif key == "jyo_cd":

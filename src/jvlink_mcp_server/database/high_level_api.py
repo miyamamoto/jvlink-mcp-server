@@ -8,6 +8,23 @@ from typing import Optional, Dict, Any
 import pandas as pd
 
 
+def _escape_like_param(value: str) -> str:
+    """LIKE句のパラメータをエスケープしてSQLインジェクションを防止
+
+    Args:
+        value: ユーザー入力値
+
+    Returns:
+        エスケープ済みの文字列
+    """
+    # シングルクォートをエスケープ
+    escaped = value.replace("'", "''")
+    # LIKE句の特殊文字をエスケープ
+    escaped = escaped.replace("%", "\\%")
+    escaped = escaped.replace("_", "\\_")
+    return escaped
+
+
 # 競馬場名→コード変換テーブル
 VENUE_CODES = {
     '札幌': '01', '函館': '02', '福島': '03', '新潟': '04',
@@ -209,8 +226,9 @@ def get_jockey_stats(
     conditions = []
     condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
 
-    # 騎手名（部分一致）
-    conditions.append(f"s.KisyuRyakusyo LIKE '%{jockey_name}%'")
+    # 騎手名（部分一致）- SQLインジェクション対策済み
+    safe_jockey_name = _escape_like_param(jockey_name)
+    conditions.append(f"s.KisyuRyakusyo LIKE '%{safe_jockey_name}%' ESCAPE '\\'")
 
     # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
@@ -452,8 +470,9 @@ def get_horse_history(
     """
     conditions = []
 
-    # 馬名（部分一致）
-    conditions.append(f"s.Bamei LIKE '%{horse_name}%'")
+    # 馬名（部分一致）- SQLインジェクション対策済み
+    safe_horse_name = _escape_like_param(horse_name)
+    conditions.append(f"s.Bamei LIKE '%{safe_horse_name}%' ESCAPE '\\'")
 
     # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
@@ -543,8 +562,9 @@ def get_sire_stats(
     conditions = []
     condition_desc = [f"種牡馬: {sire_name}（部分一致）"]
 
-    # 種牡馬名（部分一致）
-    conditions.append(f"s.Bamei1 LIKE '%{sire_name}%'")
+    # 種牡馬名（部分一致）- SQLインジェクション対策済み
+    safe_sire_name = _escape_like_param(sire_name)
+    conditions.append(f"s.Bamei1 LIKE '%{safe_sire_name}%' ESCAPE '\\'")
 
     # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
