@@ -40,6 +40,31 @@ TABLE_DESCRIPTIONS = {
     "NL_O4": {"description": "馬単オッズ（確定）", "primary_keys": []},
     "NL_O5": {"description": "3連複オッズ（確定）", "primary_keys": []},
     "NL_O6": {"description": "3連単オッズ（確定）", "primary_keys": []},
+    # 票数テーブル (NL_H1-H6)
+    "NL_H1": {
+        "description": "単勝・複勝票数（確定） - 単勝・複勝の投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_H2": {
+        "description": "馬連票数（確定） - 馬連の投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_H3": {
+        "description": "ワイド票数（確定） - ワイドの投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_H4": {
+        "description": "馬単票数（確定） - 馬単の投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_H5": {
+        "description": "3連複票数（確定） - 3連複の投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_H6": {
+        "description": "3連単票数（確定） - 3連単の投票数情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
     # === 速報系 (RT_) ===
     "RT_RA": {
         "description": "レース情報テーブル（速報） - 当日のレース情報",
@@ -56,6 +81,12 @@ TABLE_DESCRIPTIONS = {
     "RT_O4": {"description": "馬単オッズ（速報）", "primary_keys": []},
     "RT_O5": {"description": "3連複オッズ（速報）", "primary_keys": []},
     "RT_O6": {"description": "3連単オッズ（速報）", "primary_keys": []},
+    "RT_H1": {"description": "単勝・複勝票数（速報）", "primary_keys": []},
+    "RT_H2": {"description": "馬連票数（速報）", "primary_keys": []},
+    "RT_H3": {"description": "ワイド票数（速報）", "primary_keys": []},
+    "RT_H4": {"description": "馬単票数（速報）", "primary_keys": []},
+    "RT_H5": {"description": "3連複票数（速報）", "primary_keys": []},
+    "RT_H6": {"description": "3連単票数（速報）", "primary_keys": []},
     # === 時系列オッズ (TS_) ===
     "TS_O1": {
         "description": "時系列単勝・複勝オッズ - オッズの時間推移を記録",
