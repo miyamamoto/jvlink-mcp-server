@@ -178,5 +178,5 @@ uv sync
 
 ## ライセンス
 
-- **商用利用:** 事前にお問い合わせください → mitsuo.yamamoto+github@gmail.com
+- **商用利用:** 事前にお問い合わせください → oracle.datascientist@gmail.com
 - **非商用利用:** Apache License 2.0
