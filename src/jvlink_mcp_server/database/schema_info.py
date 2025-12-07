@@ -13,6 +13,7 @@
 
 # === 蓄積系テーブル (NL_) ===
 JVLINK_TABLES = {
+    # レース・出走情報
     "NL_RA": {
         "description": "レース情報テーブル（確定）",
         "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
@@ -48,6 +49,17 @@ JVLINK_TABLES = {
             "SexCD": "性別コード (1=牡, 2=牝, 3=セン)",
         },
     },
+    "NL_TK": {
+        "description": "特別登録馬テーブル - 特別レースへの登録馬情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "KettoNum"],
+        "key_columns": {
+            "KettoNum": "血統登録番号",
+            "Bamei": "馬名",
+            "Futan": "斤量 (REAL)",
+        },
+    },
+    "NL_HR": {"description": "払戻テーブル（確定）", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"], "key_columns": {}},
+    # 馬・騎手・調教師マスタ
     "NL_UM": {
         "description": "馬マスタ（JRA中央競馬のみ。地方競馬はJOIN不可）",
         "primary_keys": ["KettoNum"],
@@ -60,13 +72,51 @@ JVLINK_TABLES = {
     },
     "NL_KS": {"description": "騎手マスタ", "primary_keys": ["KisyuCode"], "key_columns": {"KisyuName": "騎手名", "KisyuRyakusyo": "騎手名略称"}},
     "NL_CH": {"description": "調教師マスタ", "primary_keys": ["ChokyosiCode"], "key_columns": {"ChokyosiName": "調教師名", "ChokyosiRyakusyo": "調教師名略称"}},
-    "NL_HR": {"description": "払戻テーブル（確定）", "primary_keys": [], "key_columns": {}},
+    "NL_BN": {"description": "馬主マスタ", "primary_keys": ["BanusiCode"], "key_columns": {"BanusiName": "馬主名", "Fukusyoku": "服色"}},
+    "NL_BR": {"description": "生産者マスタ", "primary_keys": ["BreederCode"], "key_columns": {"BreederName": "生産者名", "Address": "住所"}},
+    # 血統・繁殖情報
+    "NL_HN": {"description": "繁殖馬マスタ", "primary_keys": ["HansyokuNum"], "key_columns": {"Bamei": "馬名", "FHansyokuNum": "父繁殖番号", "MHansyokuNum": "母繁殖番号"}},
+    "NL_SK": {"description": "産駒マスタ", "primary_keys": ["KettoNum"], "key_columns": {"BirthDate": "生年月日", "SexCD": "性別"}},
+    "NL_BT": {"description": "系統情報テーブル", "primary_keys": ["HansyokuNum"], "key_columns": {"KeitoName": "系統名"}},
+    # 成績・統計情報
+    "NL_CK": {
+        "description": "競走馬市場取引価格テーブル - 馬の詳細成績・適性情報",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "KettoNum"],
+        "key_columns": {
+            "KettoNum": "血統登録番号",
+            "Bamei": "馬名",
+            "KyakusituKeiko": "脚質傾向",
+        },
+    },
+    "NL_HC": {"description": "調教師本賞金・付加賞金テーブル", "primary_keys": ["ChokyosiCode", "SetYear"], "key_columns": {}},
+    "NL_HS": {"description": "馬市場取引価格テーブル", "primary_keys": ["KettoNum"], "key_columns": {"Price": "価格"}},
+    "NL_HY": {"description": "抹消馬名テーブル", "primary_keys": [], "key_columns": {"Bamei": "馬名"}},
+    # オッズ・票数テーブル
     "NL_O1": {"description": "単勝複勝オッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O2": {"description": "馬連オッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O3": {"description": "ワイドオッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O4": {"description": "馬単オッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O5": {"description": "3連複オッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O6": {"description": "3連単オッズ（確定）", "primary_keys": [], "key_columns": {}},
+    "NL_H1": {"description": "単勝複勝票数（確定）", "primary_keys": [], "key_columns": {}},
+    "NL_H6": {"description": "3連単票数（確定）", "primary_keys": [], "key_columns": {}},
+    # 変更情報
+    "NL_JC": {"description": "騎手変更テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"], "key_columns": {}},
+    "NL_CC": {"description": "コース変更テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"], "key_columns": {}},
+    "NL_TC": {"description": "発走時刻変更テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"], "key_columns": {}},
+    "NL_JG": {"description": "出走取消・競走除外テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "KettoNum"], "key_columns": {}},
+    # 天候・馬場情報
+    "NL_WE": {"description": "天候馬場状態テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji"], "key_columns": {}},
+    "NL_WH": {"description": "天候馬場変更テーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji"], "key_columns": {}},
+    # 調教・その他
+    "NL_WC": {"description": "調教タイムテーブル", "primary_keys": ["KettoNum", "ChokyoDate"], "key_columns": {"Course": "コース", "HaronTime3Total": "3ハロンタイム"}},
+    "NL_DM": {"description": "デジタルメモテーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"], "key_columns": {}},
+    "NL_TM": {"description": "タイムマスタテーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"], "key_columns": {"TMScore": "タイムスコア"}},
+    "NL_CS": {"description": "コース情報マスタ", "primary_keys": ["JyoCD", "Kyori", "TrackCD"], "key_columns": {}},
+    "NL_RC": {"description": "レコードタイムテーブル", "primary_keys": [], "key_columns": {"RecTime": "レコードタイム"}},
+    "NL_YS": {"description": "開催スケジュールテーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji"], "key_columns": {}},
+    "NL_WF": {"description": "WIN5情報テーブル", "primary_keys": ["Year", "MonthDay"], "key_columns": {}},
+    "NL_AV": {"description": "セリ市情報テーブル", "primary_keys": ["KettoNum"], "key_columns": {"Price": "価格"}},
 }
 
 # === 速報系テーブル (RT_) ===
@@ -101,6 +151,18 @@ REALTIME_TABLES = {
     "RT_O4": {"description": "馬単オッズ（速報）", "primary_keys": [], "key_columns": {}},
     "RT_O5": {"description": "3連複オッズ（速報）", "primary_keys": [], "key_columns": {}},
     "RT_O6": {"description": "3連単オッズ（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_H1": {"description": "単勝複勝票数（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_H6": {"description": "3連単票数（速報）", "primary_keys": [], "key_columns": {}},
+    # 変更情報（速報）
+    "RT_AV": {"description": "セリ市情報（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_CC": {"description": "コース変更（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_DM": {"description": "デジタルメモ（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_JC": {"description": "騎手変更（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_TC": {"description": "発走時刻変更（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_RC": {"description": "レコードタイム（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_TM": {"description": "タイムマスタ（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_WE": {"description": "天候馬場状態（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_WH": {"description": "天候馬場変更（速報）", "primary_keys": [], "key_columns": {}},
 }
 
 # === 時系列オッズテーブル (TS_) ===
