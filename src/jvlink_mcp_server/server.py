@@ -601,4 +601,15 @@ def get_database_overview() -> dict:
 
 # サーバーのエントリーポイント
 if __name__ == "__main__":
-    mcp.run()
+    import sys
+
+    # コマンドライン引数でトランスポートを選択
+    if len(sys.argv) > 1 and sys.argv[1] == "--sse":
+        # SSE/HTTPモード（リモート接続用）
+        import uvicorn
+        port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
+        print(f"Starting MCP server with SSE transport on http://0.0.0.0:{port}/sse")
+        uvicorn.run(mcp.sse_app(), host="0.0.0.0", port=port)
+    else:
+        # stdioモード（デフォルト、Claude Desktop用）
+        mcp.run()
