@@ -1,0 +1,66 @@
+site_name: JVLink MCP Server
+site_url: https://miyamamoto.github.io/jvlink-mcp-server/
+site_description: JRA-VAN競馬データをClaudeで分析するためのMCPサーバー
+site_author: miyamamoto
+
+repo_name: miyamamoto/jvlink-mcp-server
+repo_url: https://github.com/miyamamoto/jvlink-mcp-server
+
+theme:
+  name: material
+  language: ja
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: ダークモードに切替
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: ライトモードに切替
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - ホーム: index.md
+  - セットアップ:
+      - Claude Desktop: CLAUDE_DESKTOP_SETUP.md
+      - データベース準備: DATABASE_SETUP.md
+      - Docker: DOCKER_SETUP.md
+      - リモート接続: REMOTE_SETUP.md
+  - API リファレンス:
+      - 高レベルAPI: HIGH_LEVEL_API.md
+      - スキーマドキュメント: SCHEMA_DOCUMENTATION.md
+  - 使い方:
+      - サンプル質問集: SAMPLE_QUESTIONS.md
+  - 技術情報:
+      - DB互換性: DB_COMPATIBILITY.md
+      - スキーマカバレッジ: SCHEMA_COVERAGE_REPORT.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/miyamamoto/jvlink-mcp-server
