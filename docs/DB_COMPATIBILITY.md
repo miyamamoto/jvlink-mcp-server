@@ -2,16 +2,14 @@
 
 JVLink MCP Serverは、SQLite、DuckDB、PostgreSQLの3種類のデータベースをサポートしています。
 
-## 重要: JVLinkToSQLiteのバージョン選択
+## データベース作成ツール
 
-データベースを作成するには、JVLinkToSQLiteが必要です。使用するデータベースに応じてバージョンを選択してください：
+データベースを作成するには、[jrvltsql](https://github.com/miyamamoto/jrvltsql) を使用します。
 
-| バージョン | 対応DB | リポジトリ |
-|-----------|--------|----------|
-| **公式版** | SQLiteのみ | [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite) |
-| **拡張版** | SQLite / DuckDB / PostgreSQL | [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite) |
-
-**推奨**: まずは公式版でSQLiteを作成し、必要に応じてDuckDBに移行することをお勧めします。
+```bash
+# jrvltsqlでデータベースを作成
+# 詳細は jrvltsql のドキュメントを参照してください
+```
 
 ## サポート状況
 
@@ -51,22 +49,12 @@ GROUP BY r.idJyoCD;
 
 ### DuckDBへの移行方法
 
-#### 重要: JVLinkToSQLiteのバージョンについて
+#### 方法1: jrvltsqlで新規作成（推奨）
 
-DuckDB/PostgreSQLを使用する場合、**拡張版**が必要です：
+jrvltsqlはSQLite、DuckDB、PostgreSQLへの書き込みに対応しています。
+詳細は [jrvltsql](https://github.com/miyamamoto/jrvltsql) のドキュメントを参照してください。
 
-- **公式版** ([urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)): SQLiteのみ対応
-- **拡張版** ([miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)): SQLite/DuckDB/PostgreSQL対応
-
-#### 方法1: 拡張版で新規作成（推奨）
-
-```bash
-# 拡張版JVLinkToSQLiteで直接DuckDBを作成
-# 注意: 公式版では動作しません！拡張版を使用してください
-JVLinkToSQLite.exe --datasource C:/Users/<username>/JVData/race.duckdb --mode Exec
-```
-
-#### 方法2: 公式版でSQLiteを作成してから移行
+#### 方法2: SQLiteからDuckDBにインポート
 
 ```bash
 # DuckDB CLIでSQLiteをインポート
@@ -242,7 +230,3 @@ DuckDBは圧縮が効いている場合、若干小さくなることもあり�
 - **PostgreSQL**: 本格運用、複数ユーザー、リモート接続
 
 コードは3つすべてに完全対応しており、いつでも切り替え可能です。
-
----
-
-Generated: 2025-11-11

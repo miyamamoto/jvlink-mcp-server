@@ -17,9 +17,8 @@ if "%JVDATA_DIR%"=="" (
 if not exist "%JVDATA_DIR%" (
     echo エラー: JVDataディレクトリが見つかりません: %JVDATA_DIR%
     echo.
-    echo JVLinkToSQLiteでデータベースを作成してください：
-    echo   mkdir %USERPROFILE%\JVData
-    echo   JVLinkToSQLite.exe --datasource %USERPROFILE%\JVData\race.db --mode Exec
+    echo jrvltsqlでデータベースを作成してください：
+    echo   https://github.com/miyamamoto/jrvltsql
     echo.
     echo または環境変数を設定してください：
     echo   set JVDATA_DIR=C:\path\to\JVData
@@ -38,12 +37,11 @@ if exist "%JVDATA_DIR%\race.db" (
 ) else (
     echo エラー: データベースファイルが見つかりません: %JVDATA_DIR%
     echo.
-    echo JVLinkToSQLiteで以下のいずれかを作成してください：
-    echo   - race.db (SQLite)
-    echo   - race.duckdb (DuckDB)
+    echo jrvltsqlで以下のいずれかを作成してください：
+    echo   - keiba.db (SQLite)
+    echo   - keiba.duckdb (DuckDB)
     echo.
-    echo 例：
-    echo   JVLinkToSQLite.exe --datasource %JVDATA_DIR%\race.db --mode Exec
+    echo 詳細: https://github.com/miyamamoto/jrvltsql
     exit /b 1
 )
 
@@ -66,7 +64,7 @@ echo.
 echo マウント: %JVDATA_DIR% -^> /data (リアルタイム更新対応)
 echo アクセス URL: http://localhost:8000/sse
 echo.
-echo JVLinkToSQLiteでデータを更新すると即座に反映されます
+echo jrvltsqlでデータを更新すると即座に反映されます
 echo コンテナの再起動は不要です
 echo.
 echo 停止するには Ctrl+C を押してください

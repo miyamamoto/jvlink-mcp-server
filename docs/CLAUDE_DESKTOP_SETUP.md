@@ -2,10 +2,7 @@
 
 ## 前提条件
 
-- JVLinkToSQLiteで作成したデータベース
-  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
-  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
-  - **注意**: DuckDBやPostgreSQLを使いたい場合は拡張版が必要です
+- [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成した競馬データベース（`keiba.db`）
 
 ## 設定ファイルの場所
 
@@ -43,14 +40,14 @@ docker compose --profile postgresql up
 **SQLite:**
 ```bash
 export DB_TYPE=sqlite
-export DB_PATH=~/JVData/race.db
+export DB_PATH=~/JVData/keiba.db
 uv run python -m jvlink_mcp_server.server_sse
 ```
 
 **DuckDB:**
 ```bash
 export DB_TYPE=duckdb
-export DB_PATH=~/JVData/race.duckdb
+export DB_PATH=~/JVData/keiba.duckdb
 uv run python -m jvlink_mcp_server.server_sse
 ```
 

@@ -1,11 +1,8 @@
-# 接続セットアップ
+# リモート接続セットアップ
 
 ## 前提条件
 
-- JVLinkToSQLiteで作成したデータベース
-  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
-  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
-  - **注意**: DuckDBやPostgreSQLを使いたい場合は拡張版が必要です
+- [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成した競馬データベース
 
 ## 標準接続（API経由）
 
@@ -20,7 +17,7 @@ docker compose up jvlink-sqlite
 **ローカル環境:**
 ```bash
 export DB_TYPE=sqlite
-export DB_PATH=~/JVData/race.db
+export DB_PATH=~/JVData/keiba.db
 uv run python -m jvlink_mcp_server.server_sse
 ```
 
@@ -53,6 +50,40 @@ Claude Desktopを再起動してください。
   }
 }
 ```
+
+## Mac / Linux からWindowsのデータベースに接続
+
+JRA-VANのデータ取得（jrvltsql）はWindows専用ですが、データベースをMac/Linuxに持ってくればMCPサーバーは動作します。
+
+### 方法1: SQLiteファイルをコピー
+
+```
+Windows                          Mac / Linux
+┌─────────────┐                  ┌─────────────┐
+│  jrvltsql   │                  │  keiba.db   │ ← コピー
+│      ↓      │   ファイル共有    │      ↓      │
+│  keiba.db   │ ───────────────▶ │ MCPサーバー  │
+└─────────────┘   クラウド同期    │      ↓      │
+                                 │Claude Desktop│
+                                 └─────────────┘
+```
+
+Dropbox、Google Drive、USBメモリなどで`keiba.db`をコピーするだけ。
+データ更新時は再度コピーが必要です。
+
+### 方法2: PostgreSQL経由（リアルタイム更新）
+
+```
+Windows                          Mac / Linux
+┌─────────────┐                  ┌─────────────┐
+│  jrvltsql   │                  │ MCPサーバー  │
+│      ↓      │    ネットワーク   │      ↓      │
+│ PostgreSQL  │ ◀───────────────│Claude Desktop│
+└─────────────┘                  └─────────────┘
+```
+
+jrvltsqlはPostgreSQLへの書き込みにも対応。
+Mac/LinuxからWindowsのPostgreSQLに接続すればリアルタイムで最新データを利用できます。
 
 ## セキュリティ注意
 

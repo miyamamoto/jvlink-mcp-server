@@ -3,10 +3,7 @@
 ## 前提条件
 
 - Docker Desktop または Docker Engine
-- JVLinkToSQLiteで作成したデータベース
-  - 公式版（SQLiteのみ）: [urasandesu/JVLinkToSQLite](https://github.com/urasandesu/JVLinkToSQLite)
-  - 拡張版（SQLite/DuckDB/PostgreSQL）: [miyamamoto/JVLinkToSQLite](https://github.com/miyamamoto/JVLinkToSQLite)
-  - **注意**: DuckDBやPostgreSQLを使いたい場合は拡張版が必要です
+- [jrvltsql](https://github.com/miyamamoto/jrvltsql) で作成した競馬データベース
 
 ## クイックスタート
 
@@ -26,22 +23,22 @@ docker compose up jvlink-sqlite
 
 サーバーが起動したら `http://localhost:8000/sse` でアクセスできます。
 
-**重要**: `JVDATA_DIR` にJVLinkToSQLiteが管理するディレクトリを指定してください。JVLinkToSQLiteでデータを更新すると即座に反映されます。
+**重要**: `JVDATA_DIR` にjrvltsqlが管理するディレクトリを指定してください。jrvltsqlでデータを更新すると即座に反映されます。
 
 ### JVDataディレクトリの内容
 
-JVLinkToSQLiteが作成したデータベースファイルが格納されます：
+jrvltsqlが作成したデータベースファイルが格納されます：
 
 ```
 ~/JVData/
-├── race.db              # SQLiteデータベース
-├── race.duckdb          # DuckDBデータベース（拡張版のみ）
+├── keiba.db             # SQLiteデータベース
+├── keiba.duckdb         # DuckDBデータベース（オプション）
 └── (設定・一時ファイル)
 ```
 
 **データベースの内容:**
 - レース情報、馬情報、成績、騎手・調教師情報など
-- 約22テーブル
+- 約60テーブル
 - サイズ: 2GB〜50GB（取得期間により変動）
 
 詳細は [DATABASE_SETUP.md](DATABASE_SETUP.md) を参照してください。
@@ -94,11 +91,11 @@ docker compose --profile postgresql up
 
 **データベースが見つからない**
 - `JVDATA_DIR` が正しく設定されているか確認
-- JVLinkToSQLiteでデータベースを作成済みか確認
+- jrvltsqlでデータベースを作成済みか確認
 
 **ポートが使われている**
 - `docker-compose.yml` のポート番号を変更してください
 
-**JVLinkToSQLiteで更新したのに反映されない**
+**jrvltsqlで更新したのに反映されない**
 - `JVDATA_DIR` 環境変数が設定されているか確認
-- JVLinkToSQLiteのデータディレクトリを直接マウントしてください
+- jrvltsqlのデータディレクトリを直接マウントしてください

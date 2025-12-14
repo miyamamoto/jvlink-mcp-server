@@ -19,9 +19,8 @@ fi
 if [ ! -d "$JVDATA_DIR" ]; then
     echo "❌ エラー: JVDataディレクトリが見つかりません: $JVDATA_DIR"
     echo ""
-    echo "JVLinkToSQLiteでデータベースを作成してください："
-    echo "  mkdir ~/JVData"
-    echo "  JVLinkToSQLite --datasource ~/JVData/race.db --mode Exec"
+    echo "jrvltsqlでデータベースを作成してください："
+    echo "  https://github.com/miyamamoto/jrvltsql"
     echo ""
     echo "または環境変数を設定してください："
     echo "  export JVDATA_DIR=/path/to/JVData"
@@ -40,12 +39,11 @@ elif [ -f "$JVDATA_DIR/race.duckdb" ]; then
 else
     echo "❌ エラー: データベースファイルが見つかりません: $JVDATA_DIR"
     echo ""
-    echo "JVLinkToSQLiteで以下のいずれかを作成してください："
-    echo "  - race.db (SQLite)"
-    echo "  - race.duckdb (DuckDB)"
+    echo "jrvltsqlで以下のいずれかを作成してください："
+    echo "  - keiba.db (SQLite)"
+    echo "  - keiba.duckdb (DuckDB)"
     echo ""
-    echo "例："
-    echo "  JVLinkToSQLite --datasource $JVDATA_DIR/race.db --mode Exec"
+    echo "詳細: https://github.com/miyamamoto/jrvltsql"
     exit 1
 fi
 
@@ -67,7 +65,7 @@ echo ""
 echo "📁 マウント: $JVDATA_DIR -> /data (リアルタイム更新対応)"
 echo "🌐 アクセス URL: http://localhost:8000/sse"
 echo ""
-echo "💡 JVLinkToSQLiteでデータを更新すると即座に反映されます"
+echo "💡 jrvltsqlでデータを更新すると即座に反映されます"
 echo "   コンテナの再起動は不要です"
 echo ""
 echo "停止するには Ctrl+C を押してください"
