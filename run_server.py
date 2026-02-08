@@ -170,6 +170,36 @@ def main():
             log("")
             sys.exit(1)
 
+    # CLI: --check-update / --update
+    if "--check-update" in sys.argv:
+        from jvlink_mcp_server.updater import check_for_updates
+        info = check_for_updates()
+        if info is None:
+            print("アップデートの確認に失敗しました。")
+            sys.exit(1)
+        if info["update_available"]:
+            print(f"🔄 アップデートがあります: {info['current_version']} → {info['latest_version']}")
+            if info.get("html_url"):
+                print(f"   {info['html_url']}")
+        else:
+            print(f"✅ 最新バージョン {info['current_version']} です。")
+        sys.exit(0)
+
+    if "--update" in sys.argv:
+        from jvlink_mcp_server.updater import perform_update
+        result = perform_update()
+        print(result["message"])
+        sys.exit(0 if result["success"] else 1)
+
+    # Startup update check
+    try:
+        from jvlink_mcp_server.updater import startup_update_check
+        notice = startup_update_check()
+        if notice:
+            log(notice)
+    except Exception:
+        pass
+
     # Import and run the server
     from jvlink_mcp_server.server import mcp
 
