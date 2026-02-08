@@ -24,6 +24,7 @@ packages = ["src/jvlink_mcp_server"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+collect_ignore_glob = ["tests/live/*"]
 
 [dependency-groups]
 dev = [
