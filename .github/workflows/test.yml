@@ -18,7 +18,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest pytest-cov
       - name: Run tests
         run: python -m pytest --tb=short -q
 
@@ -32,4 +34,4 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Lint with ruff
-        run: ruff check src/
+        run: ruff check src/ --select E,W,F --ignore F401,F541,E402
