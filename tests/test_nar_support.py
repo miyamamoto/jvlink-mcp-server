@@ -155,17 +155,19 @@ class TestNARQueryTemplates:
         assert ALL_VENUE_NAME_TO_CODE['東京'] == '05'
 
     def test_render_nar_favorite_template(self):
-        sql = render_template('nar_favorite_win_rate', ninki=1)
+        sql, params = render_template('nar_favorite_win_rate', ninki=1)
         assert 'NL_SE_NAR' in sql
-        assert 'Ninki = 1' in sql
+        assert 'Ninki = ?' in sql
+        assert 1 in params
 
     def test_render_nar_favorite_with_venue(self):
-        sql = render_template('nar_favorite_win_rate', ninki=1, venue='大井')
+        sql, params = render_template('nar_favorite_win_rate', ninki=1, venue='大井')
         assert 'NL_SE_NAR' in sql
-        assert "JyoCD = '44'" in sql
+        assert "JyoCD = ?" in sql
+        assert '44' in params
 
     def test_render_nar_jockey_template(self):
-        sql = render_template('nar_jockey_stats')
+        sql, params = render_template('nar_jockey_stats')
         assert 'NL_SE_NAR' in sql
 
     def test_list_templates_includes_nar(self):
@@ -203,7 +205,9 @@ class TestNARHighLevelAPI:
         result = get_nar_favorite_performance(mock_db, venue='大井', ninki=1)
 
         call_args = mock_db.execute_safe_query.call_args[0][0]
-        assert "JyoCD = '44'" in call_args
+        call_params = mock_db.execute_safe_query.call_args[1].get('params', ())
+        assert "JyoCD = ?" in call_args
+        assert '44' in call_params
         assert '大井' in result['conditions']
 
     def test_nar_favorite_performance_zero_results(self, mock_db):

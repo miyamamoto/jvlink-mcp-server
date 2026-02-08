@@ -33,18 +33,20 @@ class TestGetTemplateInfo:
 
 class TestRenderTemplate:
     def test_favorite_win_rate_basic(self):
-        sql = render_template("favorite_win_rate", ninki=1)
-        assert "Ninki = 1" in sql
+        sql, params = render_template("favorite_win_rate", ninki=1)
+        assert "Ninki = ?" in sql
+        assert 1 in params
         assert "SELECT" in sql
 
     def test_favorite_win_rate_with_venue(self):
-        sql = render_template("favorite_win_rate", ninki=1, venue="東京")
-        assert "JyoCD = '05'" in sql
+        sql, params = render_template("favorite_win_rate", ninki=1, venue="東京")
+        assert "JyoCD = ?" in sql
+        assert "05" in params
 
     def test_jockey_stats(self):
-        sql = render_template("jockey_stats", jockey_name="ルメール")
-        assert "ルメール" in sql
-        assert "LIKE" in sql
+        sql, params = render_template("jockey_stats", jockey_name="ルメール")
+        assert "LIKE ?" in sql
+        assert "%ルメール%" in params
 
     def test_nonexistent_template_raises(self):
         with pytest.raises(ValueError, match="見つかりません"):
@@ -55,20 +57,34 @@ class TestRenderTemplate:
             render_template("race_result")  # requires year, month_day, etc.
 
     def test_horse_pedigree_escaping(self):
-        """SQLインジェクション対策テスト"""
-        sql = render_template("horse_pedigree", horse_name="test'; DROP TABLE--")
-        assert "DROP" not in sql or "LIKE" in sql
-        assert "test''" in sql  # single quote escaped
+        """SQLインジェクション対策テスト - パラメータ化クエリにより安全"""
+        sql, params = render_template("horse_pedigree", horse_name="test'; DROP TABLE--")
+        # SQL本文には値が埋め込まれない
+        assert "test'" not in sql
+        # 値はパラメータとして渡される
+        assert "%test'; DROP TABLE--%" in params
 
     def test_sire_stats(self):
-        sql = render_template("sire_stats", sire_name="ディープインパクト")
-        assert "ディープインパクト" in sql
+        sql, params = render_template("sire_stats", sire_name="ディープインパクト")
+        assert "LIKE ?" in sql
+        assert "%ディープインパクト%" in params
 
     def test_grade_race_list(self):
-        sql = render_template("grade_race_list", grade="G1", year="2024")
-        assert "GradeCD = 'A'" in sql
-        assert "Year = 2024" in sql
+        sql, params = render_template("grade_race_list", grade="G1", year="2024")
+        assert "GradeCD = ?" in sql
+        assert "A" in params
+        assert "Year = ?" in sql
+        assert 2024 in params
 
     def test_frame_stats_with_distance(self):
-        sql = render_template("frame_stats", kyori="1600")
-        assert "Kyori = 1600" in sql
+        sql, params = render_template("frame_stats", kyori="1600")
+        assert "Kyori = ?" in sql
+        assert 1600 in params
+
+    def test_returns_tuple(self):
+        """render_templateが(sql, params)タプルを返すことを確認"""
+        result = render_template("favorite_win_rate", ninki=1)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert isinstance(result[0], str)
+        assert isinstance(result[1], tuple)
