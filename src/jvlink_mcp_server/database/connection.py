@@ -134,8 +134,11 @@ class DatabaseConnection:
         ]
 
         query_upper = query.upper()
+        import re
         for keyword in dangerous_keywords:
-            if keyword in query_upper:
+            # Use word boundary matching to avoid false positives
+            # e.g. "CREATED_AT" should not trigger "CREATE", "Bamei LIKE '%UPDATE%'" should not trigger "UPDATE"
+            if re.search(r'\b' + keyword + r'\b', query_upper):
                 raise ValueError(f"Dangerous keyword '{keyword}' detected in query. Only SELECT queries are allowed.")
 
         return self.execute_query(query, params=params)
@@ -185,7 +188,7 @@ class DatabaseConnection:
             query = """
                 SELECT column_name, data_type, is_nullable
                 FROM information_schema.columns
-                WHERE table_name = ?
+                WHERE table_name = %s
             """
             df = self.execute_query(query, params=(table_name,))
             # PostgreSQLの結果を統一フォーマットに変換: data_type -> column_type
