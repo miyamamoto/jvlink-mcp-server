@@ -316,20 +316,21 @@ LIMIT 20
         },
         "sql": """
 SELECT
-    s.Bamei1 as sire_name,
+    u.Ketto3InfoBamei1 as sire_name,
     COUNT(*) as total_runs,
     SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
     SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
     ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
     ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE s
+JOIN NL_UM u ON s.KettoNum = u.KettoNum
 WHERE s.KakuteiJyuni IS NOT NULL
   AND s.KakuteiJyuni > 0
-  AND s.Bamei1 IS NOT NULL
-  AND LENGTH(s.Bamei1) > 0
+  AND u.Ketto3InfoBamei1 IS NOT NULL
+  AND LENGTH(u.Ketto3InfoBamei1) > 0
   {sire_condition}
   {year_condition}
-GROUP BY s.Bamei1
+GROUP BY u.Ketto3InfoBamei1
 HAVING COUNT(*) >= 10
 ORDER BY wins DESC, win_rate DESC
 LIMIT {limit}
@@ -535,7 +536,7 @@ def render_template(template_name: str, **params) -> Tuple[str, tuple]:
 
         # 種牡馬名の条件 - パラメータ化クエリ
         elif key == "sire_name":
-            formatted_params["sire_condition"] = "AND s.Bamei1 LIKE ?"
+            formatted_params["sire_condition"] = "AND u.Ketto3InfoBamei1 LIKE ?"
             query_params.append('%' + str(value) + '%')
 
         # 距離の条件（INTEGER型）

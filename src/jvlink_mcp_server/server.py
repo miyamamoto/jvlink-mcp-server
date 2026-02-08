@@ -138,7 +138,7 @@ def table_detail_resource(table_name: str) -> str:
             "primary_keys": table_desc.get("primary_keys", []),
             "total_columns": len(columns_with_desc),
             "columns": columns_with_desc,
-            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA_RACE", "NL_SE_RACE_UMA"] else ""
+            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA", "NL_SE"] else ""
         }
 
         return json.dumps(info, ensure_ascii=False, indent=2)
@@ -259,7 +259,7 @@ def get_table_info(table_name: str) -> dict:
             "primary_keys": table_desc.get("primary_keys", []),
             "total_columns": len(columns_with_desc),
             "columns": columns_with_desc,
-            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA_RACE", "NL_SE_RACE_UMA"] else ""
+            "query_hints": QUERY_GENERATION_HINTS if table_name in ["NL_RA", "NL_SE"] else ""
         }
 
 

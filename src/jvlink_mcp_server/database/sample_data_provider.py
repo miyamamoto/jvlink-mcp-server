@@ -205,7 +205,7 @@ def get_data_snapshot(db_connection) -> Dict[str, Any]:
     }
 
     # 各テーブルのレコード数を取得
-    for table_name in ["NL_RA", "NL_SE", "NL_UM", "NL_KS", "NL_CH", "NL_HR", "NL_O1"]:
+    for table_name in ["NL_RA", "NL_SE", "NL_UM", "NL_KS", "NL_CH", "NL_HR", "NL_O1", "NL_RA_NAR", "NL_SE_NAR"]:
         try:
             count_sql = f"SELECT COUNT(*) as cnt FROM {table_name}"
             df = db_connection.execute_safe_query(count_sql)
