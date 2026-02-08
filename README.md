@@ -44,11 +44,33 @@ SQLを書く必要はありません。自然な日本語で質問すれば、�
 
 ---
 
-## クイックスタート
+## ワンラインインストール
+
+対話式インストーラーで、クローン → 依存解決 → DB検索 → クライアント設定まで一発で完了します。
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/miyamamoto/jvlink-mcp-server/master/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/miyamamoto/jvlink-mcp-server/master/install.ps1 | iex
+```
+
+> **💡 keiba.db が見つからない場合**、JRA-VAN DataLabの契約ページをブラウザで自動的に開きます。jrvltsqlの同時インストールも選べます。
+
+---
+
+## 手動インストール
 
 ### Step 1: 競馬データベースを作成
 
 [jrvltsql](https://github.com/miyamamoto/jrvltsql) を使ってJRA-VANからデータを取得し、`keiba.db`を作成します。
+
+> **JRA-VAN DataLab** の契約が必要です → [https://jra-van.jp/dlb/](https://jra-van.jp/dlb/)
+>
+> 地方競馬データも必要な場合は **地方競馬DATA** → [https://www.keiba-data.com/](https://www.keiba-data.com/)
 
 ### Step 2: リポジトリをクローン
 
