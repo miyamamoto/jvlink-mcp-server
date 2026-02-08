@@ -69,15 +69,16 @@ class DatabaseConnection:
         
         # DB_CONNECTION_STRINGが設定されている場合はそちらを優先（後方互換性）
         if self.db_connection_string:
-            # key=value形式のパース
+            # key=value形式のパース（セミコロン区切り対応、値にスペース含む場合も正しくパース）
             params = {}
-            for part in self.db_connection_string.replace(";", " ").split():
+            for part in self.db_connection_string.split(";"):
+                part = part.strip()
                 if "=" in part:
                     k, v = part.split("=", 1)
-                    params[k.lower()] = v
+                    params[k.strip().lower()] = v.strip()
             host = params.get("host", host)
             port = int(params.get("port", port))
-            database = params.get("database", database)
+            database = params.get("database", params.get("dbname", database))
             user = params.get("username", params.get("user", user))
             password = params.get("password", password)
         
