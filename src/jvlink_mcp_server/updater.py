@@ -148,8 +148,12 @@ def save_update_check_time():
         pass
 
 
-def perform_update() -> dict:
+def perform_update(confirmed: bool = False) -> dict:
     """Perform update: git pull + uv sync (or pip install -e .).
+
+    Args:
+        confirmed: Trueの場合のみ実際にアップデートを実行。
+                   Falseの場合は確認メッセージを返す。
 
     Returns dict with success, message, and details.
     """
@@ -168,6 +172,16 @@ def perform_update() -> dict:
 
     results["from_version"] = info["current_version"]
     results["to_version"] = info["latest_version"]
+
+    # 確認が未完了の場合は確認メッセージを返す
+    if not confirmed:
+        results["message"] = (
+            f"アップデートが利用可能です: {info['current_version']} → {info['latest_version']}\n"
+            "実行するには confirmed=True を指定してください。\n"
+            "注意: git pull と依存関係の更新が実行され、サーバーの再起動が必要になります。"
+        )
+        results["requires_confirmation"] = True
+        return results
 
     # Step 2: git pull
     try:
