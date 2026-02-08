@@ -188,10 +188,85 @@ TIMESERIES_TABLES = {
     "TS_O6": {"description": "時系列3連単オッズ", "primary_keys": [], "key_columns": {}},
 }
 
+# === NAR（地方競馬）テーブル ===
+# NARテーブルはJRAテーブルと同構造で _NAR サフィックスを持つ
+# 主要テーブルのみ詳細定義し、残りは自動生成
+
+NAR_TABLES = {
+    "NL_RA_NAR": {
+        "description": "【NAR地方競馬】レース情報テーブル（確定）- JyoCD=30-57",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+        "key_columns": {
+            "Year": "開催年 (INTEGER)",
+            "MonthDay": "開催月日 (INTEGER)",
+            "JyoCD": "地方競馬場コード (TEXT, 30-57)",
+            "Hondai": "レース名本題",
+            "GradeCD": "グレードコード",
+            "Kyori": "距離（INTEGER, メートル）",
+            "TrackCD": "トラックコード",
+        },
+    },
+    "NL_SE_NAR": {
+        "description": "【NAR地方競馬】出馬表・レース結果テーブル（確定）",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
+        "key_columns": {
+            "KettoNum": "血統登録番号（NL_UM_NARとJOIN可能）",
+            "Umaban": "馬番 (INTEGER)",
+            "Bamei": "馬名",
+            "KisyuRyakusyo": "騎手名略称",
+            "KakuteiJyuni": "確定着順 (INTEGER)",
+            "Ninki": "人気 (INTEGER)",
+            "Odds": "単勝オッズ (REAL)",
+            "Time": "走破タイム (REAL, 秒)",
+        },
+    },
+    "NL_HR_NAR": {"description": "【NAR地方競馬】払戻テーブル（確定）", "primary_keys": [], "key_columns": {}},
+    "NL_UM_NAR": {
+        "description": "【NAR地方競馬】馬マスタ - NL_SE_NAR.KettoNumでJOIN可能",
+        "primary_keys": ["KettoNum"],
+        "key_columns": {
+            "Bamei": "馬名",
+            "Ketto3InfoBamei1": "父馬名",
+            "Ketto3InfoBamei2": "母馬名",
+            "Ketto3InfoBamei5": "母父馬名",
+        },
+    },
+    "NL_KS_NAR": {"description": "【NAR地方競馬】騎手マスタ", "primary_keys": ["KisyuCode"], "key_columns": {"KisyuName": "騎手名"}},
+    "NL_CH_NAR": {"description": "【NAR地方競馬】調教師マスタ", "primary_keys": ["ChokyosiCode"], "key_columns": {"ChokyosiName": "調教師名"}},
+    "RT_RA_NAR": {"description": "【NAR地方競馬】レース情報（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_SE_NAR": {"description": "【NAR地方競馬】出馬表・結果（速報）", "primary_keys": [], "key_columns": {}},
+}
+
+# その他のNARテーブルを自動生成（JRAテーブルの説明をベースに）
+def _generate_remaining_nar_tables():
+    """JRAテーブル定義からNARテーブルを自動生成"""
+    all_jra = {**JVLINK_TABLES, **REALTIME_TABLES, **TIMESERIES_TABLES}
+    nar = {}
+    for jra_name, jra_info in all_jra.items():
+        nar_name = f"{jra_name}_NAR"
+        if nar_name not in NAR_TABLES:
+            nar[nar_name] = {
+                "description": f"【NAR地方競馬】{jra_info['description']}",
+                "primary_keys": jra_info.get("primary_keys", []),
+                "key_columns": jra_info.get("key_columns", {}),
+            }
+    return nar
+
+NAR_TABLES.update(_generate_remaining_nar_tables())
+
 # 全テーブルを統合
-ALL_TABLES = {**JVLINK_TABLES, **REALTIME_TABLES, **TIMESERIES_TABLES}
+ALL_TABLES = {**JVLINK_TABLES, **REALTIME_TABLES, **TIMESERIES_TABLES, **NAR_TABLES}
 
 TRACK_CODES = {"01": "札幌", "02": "函館", "03": "福島", "04": "新潟", "05": "東京", "06": "中山", "07": "中京", "08": "京都", "09": "阪神", "10": "小倉"}
+
+NAR_TRACK_CODES = {
+    "30": "門別", "31": "北見", "32": "岩見沢", "33": "帯広", "34": "旭川",
+    "35": "盛岡", "36": "水沢", "37": "上山", "38": "三条", "39": "足利",
+    "40": "宇都宮", "41": "高崎", "42": "浦和", "43": "船橋", "44": "大井",
+    "45": "川崎", "46": "金沢", "47": "笠松", "48": "名古屋", "49": "園田",
+    "50": "姫路", "51": "益田", "52": "福山", "53": "高知", "54": "佐賀",
+    "55": "荒尾", "56": "中津", "57": "札幌(地)",
+}
 GRADE_CODES = {"A": "GI", "B": "GII", "C": "GIII", "D": "リステッド", "E": "オープン特別", "F": "3勝クラス", "G": "2勝クラス", "H": "1勝クラス", "I": "未勝利", "J": "新馬"}
 TRACK_CONDITION_CODES = {"1": "良", "2": "稍重", "3": "重", "4": "不良"}
 TRACK_TYPE_CODES = {"1": "芝", "2": "ダート", "5": "障害"}
@@ -202,15 +277,18 @@ def get_schema_description():
     return {
         "tables": ALL_TABLES,
         "track_codes": TRACK_CODES,
+        "nar_track_codes": NAR_TRACK_CODES,
         "grade_codes": GRADE_CODES,
         "important_notes": [
             "NL_: 蓄積系（確定データ）、RT_: 速報系（当日データ）、TS_: 時系列オッズ",
+            "_NAR サフィックス: NAR地方競馬テーブル（JRAと同構造）",
             "KakuteiJyuni(着順)とNinki(人気)はINTEGER型（1, 2, 3...）",
             "Umaban(馬番)とWakuban(枠番)もINTEGER型",
-            "JyoCD(競馬場)はTEXT型でゼロパディング（'05'=東京）",
+            "JyoCD(競馬場)はTEXT型: JRA='01'-'10', NAR='30'-'57'",
             "Odds, Time, HaronTimeL3, BaTaijyuはREAL型",
-            "地方競馬はNL_UMとJOIN不可",
+            "JRA馬マスタ: NL_UM、NAR馬マスタ: NL_UM_NAR（別テーブル）",
             "速報系(RT_)は当日のみ、過去データはNL_を使用",
+            "JRA+NAR横断分析: UNION ALLでNL_SE + NL_SE_NARを結合",
         ],
     }
 
@@ -223,6 +301,9 @@ def get_query_examples():
         "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY Wakuban ORDER BY Wakuban",
         "種牡馬成績": "SELECT u.Ketto3InfoBamei1 as sire, COUNT(*) as runs, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum = u.KettoNum WHERE s.KakuteiJyuni IS NOT NULL GROUP BY u.Ketto3InfoBamei1 HAVING COUNT(*) >= 100 ORDER BY wins DESC LIMIT 20",
         "当日オッズ推移": "SELECT HassoTime, Umaban, TanOdds, TanNinki FROM TS_O1 WHERE Year = 2024 AND MonthDay = 1222 AND JyoCD = '06' AND RaceNum = 11 ORDER BY HassoTime, Umaban",
+        "NAR大井1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE_NAR WHERE JyoCD = '44' AND Ninki = 1 AND KakuteiJyuni IS NOT NULL",
+        "NAR騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE_NAR WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20",
+        "JRA_NAR横断1番人気": "SELECT CASE WHEN JyoCD <= '10' THEN 'JRA' ELSE 'NAR' END as org, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM (SELECT JyoCD, Ninki, KakuteiJyuni FROM NL_SE WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL UNION ALL SELECT JyoCD, Ninki, KakuteiJyuni FROM NL_SE_NAR WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL) combined GROUP BY org",
     }
 
 

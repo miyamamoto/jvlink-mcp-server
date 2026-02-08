@@ -36,6 +36,8 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     if col == "MonthDay" or col == "idMonthDay":
         return "開催月日（MMDD形式）"
     if col == "JyoCD" or col == "idJyoCD":
+        if table_name.endswith("_NAR"):
+            return "地方競馬場コード（30=門別, 35=盛岡, 36=水沢, 42=浦和, 43=船橋, 44=大井, 45=川崎, 46=金沢, 47=笠松, 48=名古屋, 49=園田, 50=姫路, 53=高知, 54=佐賀）"
         return "競馬場コード（01=札幌, 02=函館, 03=福島, 04=新潟, 05=東京, 06=中山, 07=中京, 08=京都, 09=阪神, 10=小倉）"
     if col == "Kaiji" or col == "idKaiji":
         return "開催回次（第何回開催か）"

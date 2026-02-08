@@ -188,6 +188,97 @@ TABLE_DESCRIPTIONS = {
     "TS_O4": {"description": "時系列馬単オッズ", "primary_keys": []},
     "TS_O5": {"description": "時系列3連複オッズ", "primary_keys": []},
     "TS_O6": {"description": "時系列3連単オッズ", "primary_keys": []},
+    # === NAR（地方競馬）蓄積系 (NL_*_NAR) ===
+    "NL_RA_NAR": {
+        "description": "【NAR地方競馬】レース情報テーブル（確定） - 地方競馬の各レース基本情報。JyoCD=30-57",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_SE_NAR": {
+        "description": "【NAR地方競馬】出馬表テーブル（確定） - 地方競馬の出走馬情報・結果",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
+    },
+    "NL_TK_NAR": {
+        "description": "【NAR地方競馬】特別登録馬テーブル",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "KettoNum"],
+    },
+    "NL_HR_NAR": {
+        "description": "【NAR地方競馬】払戻テーブル（確定）",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+    },
+    "NL_UM_NAR": {
+        "description": "【NAR地方競馬】馬マスタテーブル - 地方競馬馬の基本情報・血統",
+        "primary_keys": ["KettoNum"],
+    },
+    "NL_KS_NAR": {
+        "description": "【NAR地方競馬】騎手マスタテーブル",
+        "primary_keys": ["KisyuCode"],
+    },
+    "NL_CH_NAR": {
+        "description": "【NAR地方競馬】調教師マスタテーブル",
+        "primary_keys": ["ChokyosiCode"],
+    },
+    "NL_BN_NAR": {"description": "【NAR地方競馬】馬主マスタテーブル", "primary_keys": ["BanusiCode"]},
+    "NL_BR_NAR": {"description": "【NAR地方競馬】生産者マスタテーブル", "primary_keys": ["BreederCode"]},
+    "NL_HN_NAR": {"description": "【NAR地方競馬】繁殖馬マスタテーブル", "primary_keys": ["HansyokuNum"]},
+    "NL_SK_NAR": {"description": "【NAR地方競馬】産駒マスタテーブル", "primary_keys": ["KettoNum"]},
+    "NL_BT_NAR": {"description": "【NAR地方競馬】系統情報テーブル", "primary_keys": ["HansyokuNum"]},
+    "NL_CK_NAR": {
+        "description": "【NAR地方競馬】競走馬成績詳細テーブル",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "KettoNum"],
+    },
+    "NL_HC_NAR": {"description": "【NAR地方競馬】調教師賞金テーブル", "primary_keys": ["ChokyosiCode", "SetYear"]},
+    "NL_HS_NAR": {"description": "【NAR地方競馬】馬市場取引価格テーブル", "primary_keys": ["KettoNum"]},
+    "NL_HY_NAR": {"description": "【NAR地方競馬】抹消馬名テーブル", "primary_keys": []},
+    "NL_O1_NAR": {"description": "【NAR地方競馬】単勝・複勝オッズ（確定）", "primary_keys": []},
+    "NL_O2_NAR": {"description": "【NAR地方競馬】馬連オッズ（確定）", "primary_keys": []},
+    "NL_O3_NAR": {"description": "【NAR地方競馬】ワイドオッズ（確定）", "primary_keys": []},
+    "NL_O4_NAR": {"description": "【NAR地方競馬】馬単オッズ（確定）", "primary_keys": []},
+    "NL_O5_NAR": {"description": "【NAR地方競馬】3連複オッズ（確定）", "primary_keys": []},
+    "NL_O6_NAR": {"description": "【NAR地方競馬】3連単オッズ（確定）", "primary_keys": []},
+    "NL_H1_NAR": {"description": "【NAR地方競馬】単勝・複勝票数（確定）", "primary_keys": []},
+    "NL_H6_NAR": {"description": "【NAR地方競馬】3連単票数（確定）", "primary_keys": []},
+    "NL_JC_NAR": {"description": "【NAR地方競馬】騎手変更テーブル", "primary_keys": []},
+    "NL_CC_NAR": {"description": "【NAR地方競馬】コース変更テーブル", "primary_keys": []},
+    "NL_TC_NAR": {"description": "【NAR地方競馬】発走時刻変更テーブル", "primary_keys": []},
+    "NL_JG_NAR": {"description": "【NAR地方競馬】出走取消・競走除外テーブル", "primary_keys": []},
+    "NL_WE_NAR": {"description": "【NAR地方競馬】天候馬場状態テーブル", "primary_keys": []},
+    "NL_WH_NAR": {"description": "【NAR地方競馬】天候馬場変更テーブル", "primary_keys": []},
+    "NL_WC_NAR": {"description": "【NAR地方競馬】調教タイムテーブル", "primary_keys": []},
+    "NL_DM_NAR": {"description": "【NAR地方競馬】デジタルメモテーブル", "primary_keys": []},
+    "NL_TM_NAR": {"description": "【NAR地方競馬】タイムマスタテーブル", "primary_keys": []},
+    "NL_CS_NAR": {"description": "【NAR地方競馬】コース情報マスタ", "primary_keys": []},
+    "NL_RC_NAR": {"description": "【NAR地方競馬】レコードタイムテーブル", "primary_keys": []},
+    "NL_YS_NAR": {"description": "【NAR地方競馬】開催スケジュールテーブル", "primary_keys": []},
+    "NL_WF_NAR": {"description": "【NAR地方競馬】WIN5情報テーブル", "primary_keys": []},
+    "NL_AV_NAR": {"description": "【NAR地方競馬】セリ市情報テーブル", "primary_keys": []},
+    # === NAR 速報系 (RT_*_NAR) ===
+    "RT_RA_NAR": {"description": "【NAR地方競馬】レース情報（速報）", "primary_keys": []},
+    "RT_SE_NAR": {"description": "【NAR地方競馬】出馬表・結果（速報）", "primary_keys": []},
+    "RT_HR_NAR": {"description": "【NAR地方競馬】払戻（速報）", "primary_keys": []},
+    "RT_O1_NAR": {"description": "【NAR地方競馬】単勝複勝オッズ（速報）", "primary_keys": []},
+    "RT_O2_NAR": {"description": "【NAR地方競馬】馬連オッズ（速報）", "primary_keys": []},
+    "RT_O3_NAR": {"description": "【NAR地方競馬】ワイドオッズ（速報）", "primary_keys": []},
+    "RT_O4_NAR": {"description": "【NAR地方競馬】馬単オッズ（速報）", "primary_keys": []},
+    "RT_O5_NAR": {"description": "【NAR地方競馬】3連複オッズ（速報）", "primary_keys": []},
+    "RT_O6_NAR": {"description": "【NAR地方競馬】3連単オッズ（速報）", "primary_keys": []},
+    "RT_H1_NAR": {"description": "【NAR地方競馬】単勝複勝票数（速報）", "primary_keys": []},
+    "RT_H6_NAR": {"description": "【NAR地方競馬】3連単票数（速報）", "primary_keys": []},
+    "RT_AV_NAR": {"description": "【NAR地方競馬】セリ市情報（速報）", "primary_keys": []},
+    "RT_CC_NAR": {"description": "【NAR地方競馬】コース変更（速報）", "primary_keys": []},
+    "RT_DM_NAR": {"description": "【NAR地方競馬】デジタルメモ（速報）", "primary_keys": []},
+    "RT_JC_NAR": {"description": "【NAR地方競馬】騎手変更（速報）", "primary_keys": []},
+    "RT_TC_NAR": {"description": "【NAR地方競馬】発走時刻変更（速報）", "primary_keys": []},
+    "RT_RC_NAR": {"description": "【NAR地方競馬】レコードタイム（速報）", "primary_keys": []},
+    "RT_TM_NAR": {"description": "【NAR地方競馬】タイムマスタ（速報）", "primary_keys": []},
+    "RT_WE_NAR": {"description": "【NAR地方競馬】天候馬場状態（速報）", "primary_keys": []},
+    "RT_WH_NAR": {"description": "【NAR地方競馬】天候馬場変更（速報）", "primary_keys": []},
+    # === NAR 時系列オッズ (TS_*_NAR) ===
+    "TS_O1_NAR": {"description": "【NAR地方競馬】時系列単勝複勝オッズ", "primary_keys": []},
+    "TS_O2_NAR": {"description": "【NAR地方競馬】時系列馬連オッズ", "primary_keys": []},
+    "TS_O3_NAR": {"description": "【NAR地方競馬】時系列ワイドオッズ", "primary_keys": []},
+    "TS_O4_NAR": {"description": "【NAR地方競馬】時系列馬単オッズ", "primary_keys": []},
+    "TS_O5_NAR": {"description": "【NAR地方競馬】時系列3連複オッズ", "primary_keys": []},
+    "TS_O6_NAR": {"description": "【NAR地方競馬】時系列3連単オッズ", "primary_keys": []},
 }
 
 # カラムの説明（主要カラムのみ）
@@ -284,12 +375,30 @@ COLUMN_DESCRIPTIONS = {
     },
 }
 
+# NAR主要テーブルのカラム説明（JRAと同構造だがJyoCDが異なる）
+COLUMN_DESCRIPTIONS["NL_RA_NAR"] = {
+    **COLUMN_DESCRIPTIONS.get("NL_RA", {}),
+    "JyoCD": "地方競馬場コード（30=門別, 31=北見, 32=岩見沢, 33=帯広, 34=旭川, 35=盛岡, 36=水沢, 37=上山, 38=三条, 39=足利, 40=宇都宮, 41=高崎, 42=浦和, 43=船橋, 44=大井, 45=川崎, 46=金沢, 47=笠松, 48=名古屋, 49=園田, 50=姫路, 51=益田, 52=福山, 53=高知, 54=佐賀, 55=荒尾, 56=中津, 57=札幌(地)）",
+}
+COLUMN_DESCRIPTIONS["NL_SE_NAR"] = {
+    **COLUMN_DESCRIPTIONS.get("NL_SE", {}),
+    "JyoCD": "地方競馬場コード（30-57、NL_RA_NARのJyoCD参照）",
+}
+
 # コード値の説明
 CODE_MAPPINGS = {
     "競馬場コード": {
         "01": "札幌", "02": "函館", "03": "福島", "04": "新潟",
         "05": "東京", "06": "中山", "07": "中京", "08": "京都",
         "09": "阪神", "10": "小倉",
+    },
+    "地方競馬場コード": {
+        "30": "門別", "31": "北見", "32": "岩見沢", "33": "帯広", "34": "旭川",
+        "35": "盛岡", "36": "水沢", "37": "上山", "38": "三条", "39": "足利",
+        "40": "宇都宮", "41": "高崎", "42": "浦和", "43": "船橋", "44": "大井",
+        "45": "川崎", "46": "金沢", "47": "笠松", "48": "名古屋", "49": "園田",
+        "50": "姫路", "51": "益田", "52": "福山", "53": "高知", "54": "佐賀",
+        "55": "荒尾", "56": "中津", "57": "札幌(地)",
     },
     "グレードコード": {
         "A": "G1（最高グレード）", "B": "G2", "C": "G3",
@@ -354,14 +463,48 @@ jrvltsql v2.0以降では適切な型が使用されています：
 #### 地方競馬のJOIN制限
 - NL_SE + NL_UM のJOINはJRA中央競馬のみ100%マッチ
 - 地方競馬（JyoCD > 10）はNL_UMにデータがないためJOIN不可
+
+### NAR（地方競馬）テーブルについて
+
+- NARテーブルはJRAテーブルに `_NAR` サフィックスを付けた同構造テーブル
+  - 例: NL_RA_NAR, NL_SE_NAR, RT_RA_NAR, TS_O1_NAR
+- カラム構造はJRAテーブルと同一
+- NARの競馬場コード（JyoCD）: 30-57（JRA: 01-10）
+  - 主要: 44=大井, 43=船橋, 42=浦和, 45=川崎, 48=名古屋, 49=園田, 53=高知, 54=佐賀
+- NAR馬マスタ: NL_UM_NAR（NL_SE_NAR.KettoNumでJOIN可能）
+- JRAとNARの横断分析: UNION ALLでNL_SE + NL_SE_NARを結合
+
+### JRA/NAR横断クエリ例
+
+```sql
+-- JRA + NAR全レースの1番人気勝率
+SELECT
+    CASE WHEN JyoCD <= '10' THEN 'JRA' ELSE 'NAR' END as org,
+    COUNT(*) as total,
+    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins
+FROM (
+    SELECT JyoCD, Ninki, KakuteiJyuni FROM NL_SE WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL
+    UNION ALL
+    SELECT JyoCD, Ninki, KakuteiJyuni FROM NL_SE_NAR WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL
+) combined
+GROUP BY org
+```
 """
 
 
 def get_column_description(table_name: str, column_name: str) -> str:
+    # Try exact table name first
     if table_name in COLUMN_DESCRIPTIONS:
         manual_desc = COLUMN_DESCRIPTIONS[table_name].get(column_name, "")
         if manual_desc:
             return manual_desc
+    # For NAR tables, fall back to JRA table descriptions
+    if table_name.endswith("_NAR"):
+        jra_table = table_name[:-4]  # Remove _NAR suffix
+        if jra_table in COLUMN_DESCRIPTIONS:
+            manual_desc = COLUMN_DESCRIPTIONS[jra_table].get(column_name, "")
+            if manual_desc:
+                return manual_desc
     return auto_generate(table_name, column_name)
 
 
