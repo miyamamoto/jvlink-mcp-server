@@ -1,35 +1,18 @@
 """High-level API for common horse racing analysis patterns
 
 このモジュールは、よくある分析パターンを簡単に実行できる関数を提供します。
-内部で正しいSQLを自動生成し、データベースから結果を取得します。
+内部でパラメータ化クエリを使用し、安全にデータベースから結果を取得します。
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import pandas as pd
 
 
-def _validate_year(year_from: str) -> str:
-    """年パラメータをバリデーション（SQLインジェクション防止）"""
+def _validate_year(year_from: str) -> int:
+    """年パラメータをバリデーションし整数で返す"""
     if not str(year_from).strip().isdigit():
         raise ValueError(f"year_from に不正な値が指定されました: {year_from!r}")
-    return str(year_from).strip()
-
-
-def _escape_like_param(value: str) -> str:
-    """LIKE句のパラメータをエスケープしてSQLインジェクションを防止
-
-    Args:
-        value: ユーザー入力値
-
-    Returns:
-        エスケープ済みの文字列
-    """
-    # シングルクォートをエスケープ
-    escaped = value.replace("'", "''")
-    # LIKE句の特殊文字をエスケープ
-    escaped = escaped.replace("%", "\\%")
-    escaped = escaped.replace("_", "\\_")
-    return escaped
+    return int(str(year_from).strip())
 
 
 # 競馬場名→コード変換テーブル（JRA）
@@ -111,9 +94,11 @@ def _favorite_performance_impl(
     """人気別成績の共通実装（JRA/NAR兼用）"""
     tables = _SOURCE_TABLES[source]
     conditions = []
+    query_params: List = []
     condition_desc = []
 
-    conditions.append(f"Ninki = {ninki}")
+    conditions.append("Ninki = ?")
+    query_params.append(ninki)
     condition_desc.append(f"{ninki}番人気")
     if source == 'nar':
         condition_desc.append("NAR地方競馬")
@@ -123,23 +108,27 @@ def _favorite_performance_impl(
 
     if venue:
         venue_code = _resolve_venue(venue, source)
-        conditions.append(f"s.JyoCD = '{venue_code}'")
+        conditions.append("s.JyoCD = ?")
+        query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
 
     if grade:
         grade_code = GRADE_CODES.get(grade.upper())
         if not grade_code:
             raise ValueError(f"不明なグレード: {grade}. 有効な値: {list(GRADE_CODES.keys())}")
-        conditions.append(f"r.GradeCD = '{grade_code}'")
+        conditions.append("r.GradeCD = ?")
+        query_params.append(grade_code)
         condition_desc.append(f"グレード{grade}")
 
     if year_from:
-        year_from = _validate_year(year_from)
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
+        year_val = _validate_year(year_from)
+        conditions.append("s.Year >= ?")
+        query_params.append(year_val)
+        condition_desc.append(f"{year_val}年以降")
 
     if distance:
-        conditions.append(f"r.Kyori = {distance}")
+        conditions.append("r.Kyori = ?")
+        query_params.append(distance)
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -167,7 +156,7 @@ def _favorite_performance_impl(
         WHERE {where_clause}
         """
 
-    df = db_connection.execute_safe_query(query)
+    df = db_connection.execute_safe_query(query, params=tuple(query_params))
 
     if df.empty or df.iloc[0]['total'] == 0:
         return {**_compute_rates(0, 0, 0, 0),
@@ -225,27 +214,31 @@ def _jockey_stats_impl(
     """騎手成績の共通実装（JRA/NAR兼用）"""
     tables = _SOURCE_TABLES[source]
     conditions = []
+    query_params: List = []
     condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
     if source == 'nar':
         condition_desc.append("NAR地方競馬")
 
-    safe_name = _escape_like_param(jockey_name)
-    conditions.append(f"s.KisyuRyakusyo LIKE '%{safe_name}%' ESCAPE '\\'")
+    conditions.append("s.KisyuRyakusyo LIKE ?")
+    query_params.append('%' + jockey_name + '%')
     conditions.append("s.KakuteiJyuni IS NOT NULL")
     conditions.append("s.KakuteiJyuni > 0")
 
     if venue:
         venue_code = _resolve_venue(venue, source)
-        conditions.append(f"s.JyoCD = '{venue_code}'")
+        conditions.append("s.JyoCD = ?")
+        query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
 
     if year_from:
-        year_from = _validate_year(year_from)
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
+        year_val = _validate_year(year_from)
+        conditions.append("s.Year >= ?")
+        query_params.append(year_val)
+        condition_desc.append(f"{year_val}年以降")
 
     if distance:
-        conditions.append(f"r.Kyori = {distance}")
+        conditions.append("r.Kyori = ?")
+        query_params.append(distance)
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -274,7 +267,7 @@ def _jockey_stats_impl(
         GROUP BY s.KisyuRyakusyo
         """
 
-    df = db_connection.execute_safe_query(query)
+    df = db_connection.execute_safe_query(query, params=tuple(query_params))
 
     if df.empty:
         return {
@@ -361,6 +354,7 @@ def get_frame_stats(
     """
     # WHERE条件を構築
     conditions = []
+    query_params: List = []
     condition_desc = []
 
     # 確定着順がNULLでない（INTEGER型）
@@ -374,18 +368,21 @@ def get_frame_stats(
         venue_code = VENUE_CODES.get(venue)
         if not venue_code:
             raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
-        conditions.append(f"s.JyoCD = '{venue_code}'")
+        conditions.append("s.JyoCD = ?")
+        query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
 
     # 年（INTEGER型）
     if year_from:
-        year_from = _validate_year(year_from)
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
+        year_val = _validate_year(year_from)
+        conditions.append("s.Year >= ?")
+        query_params.append(year_val)
+        condition_desc.append(f"{year_val}年以降")
 
     # 距離（INTEGER型、NL_RAと結合が必要）
     if distance:
-        conditions.append(f"r.Kyori = {distance}")
+        conditions.append("r.Kyori = ?")
+        query_params.append(distance)
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -426,7 +423,7 @@ def get_frame_stats(
         """
 
     # クエリ実行
-    df = db_connection.execute_safe_query(query)
+    df = db_connection.execute_safe_query(query, params=tuple(query_params))
 
     if df.empty:
         return pd.DataFrame(columns=['wakuban', 'total', 'wins', 'places_2', 'places_3',
@@ -454,15 +451,17 @@ def _horse_history_impl(
     tables = _SOURCE_TABLES[source]
     venue_map = ALL_VENUE_NAMES if source == 'nar' else VENUE_NAMES
 
-    safe_name = _escape_like_param(horse_name)
     conditions = [
-        f"s.Bamei LIKE '%{safe_name}%' ESCAPE '\\'",
+        "s.Bamei LIKE ?",
         "s.KakuteiJyuni IS NOT NULL",
         "s.KakuteiJyuni > 0"
     ]
+    query_params: List = ['%' + horse_name + '%']
+
     if year_from:
-        year_from = _validate_year(year_from)
-        conditions.append(f"s.Year >= {year_from}")
+        year_val = _validate_year(year_from)
+        conditions.append("s.Year >= ?")
+        query_params.append(year_val)
 
     where_clause = " AND ".join(conditions)
 
@@ -479,7 +478,7 @@ def _horse_history_impl(
     ORDER BY s.Year DESC, s.MonthDay DESC
     """
 
-    df = db_connection.execute_safe_query(query)
+    df = db_connection.execute_safe_query(query, params=tuple(query_params))
 
     if df.empty:
         return pd.DataFrame(columns=['race_date', 'venue', 'race_name', 'distance',
@@ -550,11 +549,12 @@ def get_sire_stats(
         >>> print(f"{result['sire_name']}: 勝率 {result['win_rate']:.1f}%")
     """
     conditions = []
+    query_params: List = []
     condition_desc = [f"種牡馬: {sire_name}（部分一致）"]
 
-    # 種牡馬名（部分一致）- SQLインジェクション対策済み
-    safe_sire_name = _escape_like_param(sire_name)
-    conditions.append(f"s.Bamei1 LIKE '%{safe_sire_name}%' ESCAPE '\\'")
+    # 種牡馬名（部分一致）- パラメータ化クエリ
+    conditions.append("s.Bamei1 LIKE ?")
+    query_params.append('%' + sire_name + '%')
 
     # 確定着順がNULLでない（INTEGER型）
     conditions.append("s.KakuteiJyuni IS NOT NULL")
@@ -565,18 +565,21 @@ def get_sire_stats(
         venue_code = VENUE_CODES.get(venue)
         if not venue_code:
             raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
-        conditions.append(f"s.JyoCD = '{venue_code}'")
+        conditions.append("s.JyoCD = ?")
+        query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
 
     # 年（INTEGER型）
     if year_from:
-        year_from = _validate_year(year_from)
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
+        year_val = _validate_year(year_from)
+        conditions.append("s.Year >= ?")
+        query_params.append(year_val)
+        condition_desc.append(f"{year_val}年以降")
 
     # 距離（INTEGER型、NL_RAと結合が必要）
     if distance:
-        conditions.append(f"r.Kyori = {distance}")
+        conditions.append("r.Kyori = ?")
+        query_params.append(distance)
         condition_desc.append(f"{distance}m")
 
     where_clause = " AND ".join(conditions)
@@ -615,7 +618,7 @@ def get_sire_stats(
         """
 
     # クエリ実行
-    df = db_connection.execute_safe_query(query)
+    df = db_connection.execute_safe_query(query, params=tuple(query_params))
 
     if df.empty:
         return {

@@ -110,11 +110,12 @@ class DatabaseConnection:
         elif self.db_type == "postgresql":
             return pd.read_sql_query(query, conn, params=params)
 
-    def execute_safe_query(self, query: str) -> pd.DataFrame:
+    def execute_safe_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
         """安全なクエリのみ実行（読み取り専用）
 
         Args:
             query: 実行するSQLクエリ
+            params: クエリパラメータ
 
         Returns:
             pandas DataFrame with query results
@@ -137,7 +138,7 @@ class DatabaseConnection:
             if keyword in query_upper:
                 raise ValueError(f"Dangerous keyword '{keyword}' detected in query. Only SELECT queries are allowed.")
 
-        return self.execute_query(query)
+        return self.execute_query(query, params=params)
 
     def get_tables(self) -> list[str]:
         """データベース内のテーブル一覧を取得"""
@@ -181,12 +182,12 @@ class DatabaseConnection:
             # DuckDBは既に column_name, column_type を使用しているのでそのまま
 
         elif self.db_type == "postgresql":
-            query = f"""
+            query = """
                 SELECT column_name, data_type, is_nullable
                 FROM information_schema.columns
-                WHERE table_name = '{table_name}'
+                WHERE table_name = ?
             """
-            df = self.execute_query(query)
+            df = self.execute_query(query, params=(table_name,))
             # PostgreSQLの結果を統一フォーマットに変換: data_type -> column_type
             df = df.rename(columns={"data_type": "column_type"})
 

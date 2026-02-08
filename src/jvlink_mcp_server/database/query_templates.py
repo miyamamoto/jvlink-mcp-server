@@ -1,26 +1,10 @@
 """JVLinkデータベースのクエリテンプレート
 
 よく使うクエリパターンをテンプレート化し、パラメータを埋めるだけで正しいSQLが生成できます。
+すべてのユーザー入力値はパラメータ化クエリ（プレースホルダ）で安全に渡されます。
 """
 
-from typing import Any, Dict, List, Optional
-
-
-def _escape_like_param(value: str) -> str:
-    """LIKE句のパラメータをエスケープしてSQLインジェクションを防止
-
-    Args:
-        value: ユーザー入力値
-
-    Returns:
-        エスケープ済みの文字列
-    """
-    # シングルクォートをエスケープ
-    escaped = value.replace("'", "''")
-    # LIKE句の特殊文字をエスケープ
-    escaped = escaped.replace("%", "\\%")
-    escaped = escaped.replace("_", "\\_")
-    return escaped
+from typing import Any, Dict, List, Optional, Tuple
 
 # 競馬場名→コードマッピング（JRA）
 VENUE_NAME_TO_CODE = {
@@ -305,7 +289,7 @@ SELECT
     u.BreederName as breeder,
     u.BanusiName as owner
 FROM NL_UM u
-WHERE u.Bamei LIKE '%{horse_name}%' ESCAPE '\\'
+WHERE u.Bamei LIKE {horse_name}
 ORDER BY u.Bamei
 LIMIT 20
 """,
@@ -441,7 +425,7 @@ JOIN NL_RA r
   AND s.Kaiji = r.Kaiji
   AND s.Nichiji = r.Nichiji
   AND s.RaceNum = r.RaceNum
-WHERE s.Bamei LIKE '%{horse_name}%' ESCAPE '\\'
+WHERE s.Bamei LIKE {horse_name}
   AND s.KakuteiJyuni IS NOT NULL
   AND s.KakuteiJyuni > 0
 GROUP BY s.Bamei, r.TrackCD
@@ -477,22 +461,22 @@ def _zero_pad_code(code: str, length: int = 2) -> str:
     return code.zfill(length)
 
 
-def render_template(template_name: str, **params) -> str:
-    """テンプレートにパラメータを適用してSQLを生成
+def render_template(template_name: str, **params) -> Tuple[str, tuple]:
+    """テンプレートにパラメータを適用してSQLとパラメータタプルを生成
 
     Args:
         template_name: テンプレート名
         **params: パラメータ（テンプレートで定義されたもの）
 
     Returns:
-        生成されたSQL文字列
+        (SQL文字列, パラメータタプル) のタプル
 
     Raises:
         ValueError: テンプレートが存在しない、または必須パラメータが不足している場合
 
     Examples:
-        >>> sql = render_template('favorite_win_rate', ninki=1, venue='東京')
-        >>> sql = render_template('jockey_stats', jockey_name='武豊', limit=10)
+        >>> sql, query_params = render_template('favorite_win_rate', ninki=1, venue='東京')
+        >>> sql, query_params = render_template('jockey_stats', jockey_name='武豊', limit=10)
     """
     if template_name not in QUERY_TEMPLATES:
         raise ValueError(
@@ -514,6 +498,7 @@ def render_template(template_name: str, **params) -> str:
 
     # パラメータを整形して格納
     formatted_params = {}
+    query_params = []  # プレースホルダに対応するパラメータリスト
 
     for key, value in params.items():
         if value is None:
@@ -521,54 +506,71 @@ def render_template(template_name: str, **params) -> str:
 
         # 人気順位の変換（INTEGER型）
         if key == "ninki":
-            formatted_params[key] = _to_int(value)
+            formatted_params[key] = "?"
+            query_params.append(_to_int(value))
 
-        # 競馬場名の変換（エイリアス付き）
+        # 競馬場名の変換
         elif key == "venue":
-            formatted_params["venue_condition"] = f"AND JyoCD = '{_zero_pad_code(_venue_to_code(value))}'"
+            formatted_params["venue_condition"] = "AND JyoCD = ?"
+            query_params.append(_zero_pad_code(_venue_to_code(value)))
 
         # グレードの変換
         elif key == "grade":
-            formatted_params["grade_condition"] = f"AND r.GradeCD = '{_grade_to_code(value)}'"
+            formatted_params["grade_condition"] = "AND r.GradeCD = ?"
+            query_params.append(_grade_to_code(value))
 
         # 年の条件（INTEGER型）
         elif key == "year":
-            formatted_params["year_condition"] = f"AND Year = {_to_int(value)}"
+            formatted_params["year_condition"] = "AND Year = ?"
+            query_params.append(_to_int(value))
 
         elif key == "year_from":
-            formatted_params["year_condition"] = f"AND Year >= {_to_int(value)}"
+            formatted_params["year_condition"] = "AND Year >= ?"
+            query_params.append(_to_int(value))
 
-        # 騎手名の条件 - SQLインジェクション対策済み
+        # 騎手名の条件 - パラメータ化クエリ
         elif key == "jockey_name":
-            safe_value = _escape_like_param(str(value))
-            formatted_params["jockey_condition"] = f"AND KisyuRyakusyo LIKE '%{safe_value}%' ESCAPE '\\'"
+            formatted_params["jockey_condition"] = "AND KisyuRyakusyo LIKE ?"
+            query_params.append('%' + str(value) + '%')
 
-        # 種牡馬名の条件 - SQLインジェクション対策済み
+        # 種牡馬名の条件 - パラメータ化クエリ
         elif key == "sire_name":
-            safe_value = _escape_like_param(str(value))
-            formatted_params["sire_condition"] = f"AND s.Bamei1 LIKE '%{safe_value}%' ESCAPE '\\'"
+            formatted_params["sire_condition"] = "AND s.Bamei1 LIKE ?"
+            query_params.append('%' + str(value) + '%')
 
         # 距離の条件（INTEGER型）
         elif key == "kyori":
-            formatted_params["kyori_condition"] = f"AND Kyori = {_to_int(value)}"
+            formatted_params["kyori_condition"] = "AND Kyori = ?"
+            query_params.append(_to_int(value))
 
-        # 馬名（SQLインジェクション対策）
+        # 馬名 - パラメータ化クエリ（テンプレートSQL内の LIKE '%{horse_name}%' を置換）
         elif key == "horse_name":
-            formatted_params[key] = _escape_like_param(str(value))
+            formatted_params[key] = "?"
+            # horse_nameはテンプレート内で '%{horse_name}%' として使われるので
+            # プレースホルダ置換後に処理する（下記の後処理で対応）
+            query_params.append('%' + str(value) + '%')
 
-        # 競馬場コード（既にゼロパディング済みの場合）
+        # 競馬場コード
         elif key == "jyo_cd":
-            formatted_params[key] = _zero_pad_code(value)
+            formatted_params[key] = "?"
+            query_params.append(_zero_pad_code(value))
 
-        # 数値として使われるパラメータはバリデーション
+        # 数値として使われるパラメータ
         elif key in ("kaiji", "nichiji", "race_num"):
-            formatted_params[key] = _to_int(value)
+            formatted_params[key] = "?"
+            query_params.append(_to_int(value))
 
         # 月日パラメータ（MMDD形式、数字のみ許可）
         elif key == "month_day":
             if not str(value).strip().isdigit():
                 raise ValueError(f"month_day に不正な値が指定されました: {value!r}")
-            formatted_params[key] = str(value).strip()
+            formatted_params[key] = "?"
+            query_params.append(str(value).strip())
+
+        # limit等の数値パラメータ
+        elif key == "limit":
+            formatted_params[key] = "?"
+            query_params.append(_to_int(value))
 
         # その他はそのまま
         else:
@@ -577,7 +579,8 @@ def render_template(template_name: str, **params) -> str:
     # デフォルト値の設定
     for param_name, param_info in template_params.items():
         if param_name not in formatted_params and "default" in param_info:
-            formatted_params[param_name] = param_info["default"]
+            formatted_params[param_name] = "?"
+            query_params.append(param_info["default"])
 
     # 条件が指定されていない場合は空文字に
     condition_keys = [
@@ -594,11 +597,14 @@ def render_template(template_name: str, **params) -> str:
     except KeyError as e:
         raise ValueError(f"テンプレートに必要なパラメータが不足しています: {e}")
 
+    # race_result等で '{field}' が '?' になった場合、クォートを除去
+    sql = sql.replace("'?'", "?")
+
     # 余分な空白行を削除
     sql_lines = [line for line in sql.split("\n") if line.strip()]
     sql = "\n".join(sql_lines)
 
-    return sql
+    return sql, tuple(query_params)
 
 
 def list_templates() -> List[Dict[str, Any]]:

@@ -635,14 +635,15 @@ def list_query_templates() -> dict:
 def execute_template_query(template_name: str, **params) -> dict:
     """テンプレートからSQLを生成して実行"""
     try:
-        sql = render_template(template_name, **params)
+        sql, query_params = render_template(template_name, **params)
         with DatabaseConnection() as db:
-            result_df = db.execute_safe_query(sql)
+            result_df = db.execute_safe_query(sql, params=query_params)
             return {
                 "success": True,
                 "template": template_name,
                 "parameters": params,
                 "generated_sql": sql,
+                "query_params": list(query_params),
                 "rows": len(result_df),
                 "columns": result_df.columns.tolist(),
                 "data": result_df.head(100).to_dict(orient="records"),
