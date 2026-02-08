@@ -441,6 +441,20 @@ def get_frame_stats(
     return df
 
 
+def _ensure_bamei_index(db_connection, table_name: str) -> None:
+    """Bameiカラムにインデックスがなければ作成する（パフォーマンス改善）
+
+    read-onlyモードのDBでは作成できないためエラーは無視する。
+    """
+    try:
+        index_name = f"idx_{table_name.lower()}_bamei"
+        db_connection.execute_safe_query(
+            f"CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}(Bamei)"
+        )
+    except Exception:
+        pass  # read-only DB等ではスキップ
+
+
 def _horse_history_impl(
     db_connection,
     horse_name: str,
@@ -449,6 +463,8 @@ def _horse_history_impl(
 ) -> pd.DataFrame:
     """馬の戦績の共通実装（JRA/NAR兼用）"""
     tables = _SOURCE_TABLES[source]
+    # Bameiカラムのインデックスを自動作成（未作成の場合）
+    _ensure_bamei_index(db_connection, tables['se'])
     venue_map = ALL_VENUE_NAMES if source == 'nar' else VENUE_NAMES
 
     conditions = [

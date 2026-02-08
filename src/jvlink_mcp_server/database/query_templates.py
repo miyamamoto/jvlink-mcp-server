@@ -401,6 +401,50 @@ GROUP BY JyoCD
 ORDER BY win_rate DESC
 """,
     },
+    "race_search": {
+        "description": "レース名で検索（国内限定オプション付き）",
+        "parameters": {
+            "race_name": {
+                "type": "str",
+                "description": "レース名（部分一致、例: ダービー）",
+                "required": True,
+            },
+            "year_from": {
+                "type": "str",
+                "description": "集計開始年（YYYY形式）",
+                "required": False,
+            },
+            "domestic_only": {
+                "type": "bool",
+                "description": "国内（JRA）レースのみに限定する（JyoCD 01-10）。デフォルトtrue",
+                "required": False,
+                "default": True,
+            },
+            "limit": {
+                "type": "int",
+                "description": "表示件数",
+                "required": False,
+                "default": 50,
+            },
+        },
+        "sql": """
+SELECT
+    r.Year as year,
+    r.MonthDay as month_day,
+    r.JyoCD as venue_code,
+    r.Hondai as race_name,
+    r.GradeCD as grade,
+    r.Kyori as distance,
+    r.TrackCD as track_code,
+    r.SyussoTosu as horse_count
+FROM NL_RA r
+WHERE r.Hondai LIKE ?
+  {domestic_condition}
+  {year_condition}
+ORDER BY r.Year DESC, r.MonthDay DESC
+LIMIT {limit}
+""",
+    },
     "track_condition_stats": {
         "description": "馬場状態別成績を分析（特定の馬）",
         "parameters": {
@@ -539,6 +583,19 @@ def render_template(template_name: str, **params) -> Tuple[str, tuple]:
             formatted_params["jockey_condition"] = "AND KisyuRyakusyo LIKE ?"
             query_params.append('%' + str(value) + '%')
 
+        # レース名の条件 - パラメータ化クエリ
+        elif key == "race_name":
+            # race_searchテンプレートではSQL内に既に LIKE ? があるので
+            # formatted_paramsには入れずquery_paramsにだけ追加（先頭に挿入）
+            query_params.insert(0, '%' + str(value) + '%')
+
+        # 国内限定フラグ
+        elif key == "domestic_only":
+            if value:
+                formatted_params["domestic_condition"] = "AND CAST(r.JyoCD AS INTEGER) BETWEEN 1 AND 10"
+            else:
+                formatted_params["domestic_condition"] = ""
+
         # 種牡馬名の条件 - パラメータ化クエリ
         elif key == "sire_name":
             formatted_params["sire_condition"] = "AND u.Ketto3InfoBamei1 LIKE ?"
@@ -585,13 +642,20 @@ def render_template(template_name: str, **params) -> Tuple[str, tuple]:
     # デフォルト値の設定
     for param_name, param_info in template_params.items():
         if param_name not in formatted_params and "default" in param_info:
-            formatted_params[param_name] = "?"
-            query_params.append(param_info["default"])
+            default_val = param_info["default"]
+            # bool型のデフォルト（domestic_only等）は条件文字列として処理
+            if param_info.get("type") == "bool":
+                if param_name == "domestic_only" and default_val:
+                    formatted_params["domestic_condition"] = "AND CAST(r.JyoCD AS INTEGER) BETWEEN 1 AND 10"
+            else:
+                formatted_params[param_name] = "?"
+                query_params.append(default_val)
 
     # 条件が指定されていない場合は空文字に
     condition_keys = [
         "venue_condition", "year_condition", "jockey_condition",
-        "sire_condition", "kyori_condition", "grade_condition"
+        "sire_condition", "kyori_condition", "grade_condition",
+        "domestic_condition"
     ]
     for cond_key in condition_keys:
         if cond_key not in formatted_params:
