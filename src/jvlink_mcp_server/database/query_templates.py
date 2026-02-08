@@ -452,8 +452,14 @@ ORDER BY total_runs DESC
 
 
 def _to_int(value) -> int:
-    """値を整数に変換（INTEGER型カラム用）"""
-    return int(value)
+    """値を整数に変換（INTEGER型カラム用）
+
+    SQLインジェクション防止のため、数値以外の値は拒否する
+    """
+    str_value = str(value).strip()
+    if not str_value.lstrip('-').isdigit():
+        raise ValueError(f"数値パラメータに不正な値が指定されました: {value!r}")
+    return int(str_value)
 
 
 def _venue_to_code(venue_name: str) -> str:
@@ -553,6 +559,16 @@ def render_template(template_name: str, **params) -> str:
         # 競馬場コード（既にゼロパディング済みの場合）
         elif key == "jyo_cd":
             formatted_params[key] = _zero_pad_code(value)
+
+        # 数値として使われるパラメータはバリデーション
+        elif key in ("kaiji", "nichiji", "race_num"):
+            formatted_params[key] = _to_int(value)
+
+        # 月日パラメータ（MMDD形式、数字のみ許可）
+        elif key == "month_day":
+            if not str(value).strip().isdigit():
+                raise ValueError(f"month_day に不正な値が指定されました: {value!r}")
+            formatted_params[key] = str(value).strip()
 
         # その他はそのまま
         else:

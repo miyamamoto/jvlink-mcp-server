@@ -8,6 +8,13 @@ from typing import Optional, Dict, Any
 import pandas as pd
 
 
+def _validate_year(year_from: str) -> str:
+    """年パラメータをバリデーション（SQLインジェクション防止）"""
+    if not str(year_from).strip().isdigit():
+        raise ValueError(f"year_from に不正な値が指定されました: {year_from!r}")
+    return str(year_from).strip()
+
+
 def _escape_like_param(value: str) -> str:
     """LIKE句のパラメータをエスケープしてSQLインジェクションを防止
 
@@ -127,6 +134,7 @@ def _favorite_performance_impl(
         condition_desc.append(f"グレード{grade}")
 
     if year_from:
+        year_from = _validate_year(year_from)
         conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
@@ -232,6 +240,7 @@ def _jockey_stats_impl(
         condition_desc.append(f"{venue}競馬場")
 
     if year_from:
+        year_from = _validate_year(year_from)
         conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
@@ -370,6 +379,7 @@ def get_frame_stats(
 
     # 年（INTEGER型）
     if year_from:
+        year_from = _validate_year(year_from)
         conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
@@ -451,6 +461,7 @@ def _horse_history_impl(
         "s.KakuteiJyuni > 0"
     ]
     if year_from:
+        year_from = _validate_year(year_from)
         conditions.append(f"s.Year >= {year_from}")
 
     where_clause = " AND ".join(conditions)
@@ -559,6 +570,7 @@ def get_sire_stats(
 
     # 年（INTEGER型）
     if year_from:
+        year_from = _validate_year(year_from)
         conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
