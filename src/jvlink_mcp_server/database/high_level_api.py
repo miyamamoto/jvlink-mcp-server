@@ -552,8 +552,8 @@ def get_sire_stats(
     query_params: List = []
     condition_desc = [f"種牡馬: {sire_name}（部分一致）"]
 
-    # 種牡馬名（部分一致）- パラメータ化クエリ
-    conditions.append("s.Bamei1 LIKE ?")
+    # 種牡馬名（部分一致）- NL_UMのKetto3InfoBamei1が父馬名
+    conditions.append("u.Ketto3InfoBamei1 LIKE ?")
     query_params.append('%' + sire_name + '%')
 
     # 確定着順がNULLでない（INTEGER型）
@@ -584,16 +584,17 @@ def get_sire_stats(
 
     where_clause = " AND ".join(conditions)
 
-    # 距離指定がある場合はNL_RAと結合
+    # NL_UMとJOINして父馬名(Ketto3InfoBamei1)を取得
     if distance:
         query = f"""
         SELECT
-            s.Bamei1 as sire_name,
+            u.Ketto3InfoBamei1 as sire_name,
             COUNT(*) as total_runs,
             SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
+        JOIN NL_UM u ON s.KettoNum = u.KettoNum
         JOIN NL_RA r
             ON s.Year = r.Year
             AND s.MonthDay = r.MonthDay
@@ -602,19 +603,20 @@ def get_sire_stats(
             AND s.Nichiji = r.Nichiji
             AND s.RaceNum = r.RaceNum
         WHERE {where_clause}
-        GROUP BY s.Bamei1
+        GROUP BY u.Ketto3InfoBamei1
         """
     else:
         query = f"""
         SELECT
-            Bamei1 as sire_name,
+            u.Ketto3InfoBamei1 as sire_name,
             COUNT(*) as total_runs,
-            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
         FROM NL_SE s
+        JOIN NL_UM u ON s.KettoNum = u.KettoNum
         WHERE {where_clause}
-        GROUP BY Bamei1
+        GROUP BY u.Ketto3InfoBamei1
         """
 
     # クエリ実行
