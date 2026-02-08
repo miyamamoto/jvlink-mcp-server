@@ -707,8 +707,9 @@ if __name__ == "__main__":
         # SSE/HTTPモード（リモート接続用）
         import uvicorn
         port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-        print(f"Starting MCP server with SSE transport on http://0.0.0.0:{port}/sse")
-        uvicorn.run(mcp.sse_app(), host="0.0.0.0", port=port)
+        host = os.getenv("MCP_HOST", "127.0.0.1")
+        print(f"Starting MCP server with SSE transport on http://{host}:{port}/sse")
+        uvicorn.run(mcp.sse_app(), host=host, port=port)
     else:
         # stdioモード（デフォルト、Claude Desktop用）
         mcp.run()
