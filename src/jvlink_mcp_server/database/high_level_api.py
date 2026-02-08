@@ -61,6 +61,117 @@ GRADE_CODES = {
     '未勝利': 'I', '新馬': 'J'
 }
 
+# ソース別テーブル名
+_SOURCE_TABLES = {
+    'jra': {'se': 'NL_SE', 'ra': 'NL_RA'},
+    'nar': {'se': 'NL_SE_NAR', 'ra': 'NL_RA_NAR'},
+}
+
+
+def _resolve_venue(venue: str, source: str = 'jra') -> str:
+    """競馬場名をコードに変換（source対応）"""
+    if source == 'nar':
+        code = NAR_VENUE_CODES.get(venue) or VENUE_CODES.get(venue)
+        if not code:
+            raise ValueError(f"不明な競馬場名: {venue}. NAR: {list(NAR_VENUE_CODES.keys())}, JRA: {list(VENUE_CODES.keys())}")
+        return code
+    else:
+        code = VENUE_CODES.get(venue)
+        if not code:
+            raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
+        return code
+
+
+def _compute_rates(total, wins, places_2, places_3):
+    """勝率・連対率・複勝率を計算"""
+    return {
+        'total': total, 'wins': wins, 'places_2': places_2, 'places_3': places_3,
+        'win_rate': (wins / total * 100) if total > 0 else 0.0,
+        'place_rate_2': (places_2 / total * 100) if total > 0 else 0.0,
+        'place_rate_3': (places_3 / total * 100) if total > 0 else 0.0,
+    }
+
+
+def _favorite_performance_impl(
+    db_connection,
+    venue: Optional[str] = None,
+    ninki: int = 1,
+    grade: Optional[str] = None,
+    year_from: Optional[str] = None,
+    distance: Optional[int] = None,
+    source: str = 'jra'
+) -> Dict[str, Any]:
+    """人気別成績の共通実装（JRA/NAR兼用）"""
+    tables = _SOURCE_TABLES[source]
+    conditions = []
+    condition_desc = []
+
+    conditions.append(f"Ninki = {ninki}")
+    condition_desc.append(f"{ninki}番人気")
+    if source == 'nar':
+        condition_desc.append("NAR地方競馬")
+
+    conditions.append("KakuteiJyuni IS NOT NULL")
+    conditions.append("KakuteiJyuni > 0")
+
+    if venue:
+        venue_code = _resolve_venue(venue, source)
+        conditions.append(f"s.JyoCD = '{venue_code}'")
+        condition_desc.append(f"{venue}競馬場")
+
+    if grade:
+        grade_code = GRADE_CODES.get(grade.upper())
+        if not grade_code:
+            raise ValueError(f"不明なグレード: {grade}. 有効な値: {list(GRADE_CODES.keys())}")
+        conditions.append(f"r.GradeCD = '{grade_code}'")
+        condition_desc.append(f"グレード{grade}")
+
+    if year_from:
+        conditions.append(f"s.Year >= {year_from}")
+        condition_desc.append(f"{year_from}年以降")
+
+    if distance:
+        conditions.append(f"r.Kyori = {distance}")
+        condition_desc.append(f"{distance}m")
+
+    where_clause = " AND ".join(conditions)
+    need_join = grade or distance
+
+    if need_join:
+        query = f"""
+        SELECT COUNT(*) as total,
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
+        FROM {tables['se']} s
+        JOIN {tables['ra']} r
+            ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
+            AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
+        WHERE {where_clause}
+        """
+    else:
+        query = f"""
+        SELECT COUNT(*) as total,
+            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
+        FROM {tables['se']} s
+        WHERE {where_clause}
+        """
+
+    df = db_connection.execute_safe_query(query)
+
+    if df.empty or df.iloc[0]['total'] == 0:
+        return {**_compute_rates(0, 0, 0, 0),
+                'conditions': ', '.join(condition_desc), 'query': query}
+
+    row = df.iloc[0]
+    result = _compute_rates(int(row['total']), int(row['wins']),
+                           int(row['places_2']), int(row['places_3']))
+    result['conditions'] = ', '.join(condition_desc)
+    result['query'] = query
+    return result
+
 
 def get_favorite_performance(
     db_connection,
@@ -81,16 +192,7 @@ def get_favorite_performance(
         distance: 距離（メートル、例: 1600）
 
     Returns:
-        dict: {
-            'total': 総レース数,
-            'wins': 1着回数,
-            'places_2': 2着以内回数,
-            'places_3': 3着以内回数,
-            'win_rate': 勝率（%）,
-            'place_rate_2': 連対率（%）,
-            'place_rate_3': 複勝率（%）,
-            'conditions': 適用した条件の説明
-        }
+        dict: 勝率・連対率・複勝率等
 
     Example:
         >>> result = get_favorite_performance(
@@ -98,109 +200,95 @@ def get_favorite_performance(
         ... )
         >>> print(f"勝率: {result['win_rate']:.1f}%")
     """
-    # WHERE条件を構築
+    return _favorite_performance_impl(
+        db_connection, venue=venue, ninki=ninki, grade=grade,
+        year_from=year_from, distance=distance, source='jra'
+    )
+
+
+def _jockey_stats_impl(
+    db_connection,
+    jockey_name: str,
+    venue: Optional[str] = None,
+    year_from: Optional[str] = None,
+    distance: Optional[int] = None,
+    source: str = 'jra'
+) -> Dict[str, Any]:
+    """騎手成績の共通実装（JRA/NAR兼用）"""
+    tables = _SOURCE_TABLES[source]
     conditions = []
-    condition_desc = []
+    condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
+    if source == 'nar':
+        condition_desc.append("NAR地方競馬")
 
-    # 人気（INTEGER型）
-    conditions.append(f"Ninki = {ninki}")
-    condition_desc.append(f"{ninki}番人気")
+    safe_name = _escape_like_param(jockey_name)
+    conditions.append(f"s.KisyuRyakusyo LIKE '%{safe_name}%' ESCAPE '\\'")
+    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
 
-    # 確定着順がNULLでない（レース確定済み）
-    conditions.append("KakuteiJyuni IS NOT NULL")
-    conditions.append("KakuteiJyuni > 0")
-
-    # 競馬場
     if venue:
-        venue_code = VENUE_CODES.get(venue)
-        if not venue_code:
-            raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
+        venue_code = _resolve_venue(venue, source)
         conditions.append(f"s.JyoCD = '{venue_code}'")
         condition_desc.append(f"{venue}競馬場")
 
-    # グレード
-    if grade:
-        grade_code = GRADE_CODES.get(grade.upper())
-        if not grade_code:
-            raise ValueError(f"不明なグレード: {grade}. 有効な値: {list(GRADE_CODES.keys())}")
-        conditions.append(f"r.GradeCD = '{grade_code}'")
-        condition_desc.append(f"グレード{grade}")
-
-    # 年（INTEGER型）
     if year_from:
         conditions.append(f"s.Year >= {year_from}")
         condition_desc.append(f"{year_from}年以降")
 
-    # 距離（INTEGER型）
     if distance:
-        # NL_RAテーブルのKyoriカラムと結合する必要がある
         conditions.append(f"r.Kyori = {distance}")
         condition_desc.append(f"{distance}m")
 
-    # SQLクエリ構築
     where_clause = " AND ".join(conditions)
 
-    # グレードや距離が指定されている場合はNL_RAテーブルと結合
-    if grade or distance:
+    if distance:
         query = f"""
-        SELECT
-            COUNT(*) as total,
+        SELECT s.KisyuRyakusyo as jockey_name, COUNT(*) as total_rides,
             SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE s
-        JOIN NL_RA r
-            ON s.Year = r.Year
-            AND s.MonthDay = r.MonthDay
-            AND s.JyoCD = r.JyoCD
-            AND s.Kaiji = r.Kaiji
-            AND s.Nichiji = r.Nichiji
-            AND s.RaceNum = r.RaceNum
+        FROM {tables['se']} s
+        JOIN {tables['ra']} r
+            ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
+            AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
         WHERE {where_clause}
+        GROUP BY s.KisyuRyakusyo
         """
     else:
         query = f"""
-        SELECT
-            COUNT(*) as total,
-            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE s
+        SELECT s.KisyuRyakusyo as jockey_name, COUNT(*) as total_rides,
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
+        FROM {tables['se']} s
         WHERE {where_clause}
+        GROUP BY s.KisyuRyakusyo
         """
 
-    # クエリ実行
     df = db_connection.execute_safe_query(query)
 
-    if df.empty or df.iloc[0]['total'] == 0:
+    if df.empty:
         return {
-            'total': 0,
-            'wins': 0,
-            'places_2': 0,
-            'places_3': 0,
-            'win_rate': 0.0,
-            'place_rate_2': 0.0,
-            'place_rate_3': 0.0,
-            'conditions': ', '.join(condition_desc),
-            'query': query
+            'jockey_name': jockey_name, 'total_rides': 0, 'wins': 0,
+            'places_2': 0, 'places_3': 0, 'win_rate': 0.0,
+            'place_rate_2': 0.0, 'place_rate_3': 0.0,
+            'conditions': ', '.join(condition_desc), 'query': query
         }
 
-    row = df.iloc[0]
-    total = int(row['total'])
-    wins = int(row['wins'])
-    places_2 = int(row['places_2'])
-    places_3 = int(row['places_3'])
+    total_rides = int(df['total_rides'].sum())
+    wins = int(df['wins'].sum())
+    places_2 = int(df['places_2'].sum())
+    places_3 = int(df['places_3'].sum())
+    matched_jockey = df.loc[df['total_rides'].idxmax(), 'jockey_name']
 
     return {
-        'total': total,
-        'wins': wins,
-        'places_2': places_2,
-        'places_3': places_3,
-        'win_rate': (wins / total * 100) if total > 0 else 0.0,
-        'place_rate_2': (places_2 / total * 100) if total > 0 else 0.0,
-        'place_rate_3': (places_3 / total * 100) if total > 0 else 0.0,
+        'jockey_name': matched_jockey, 'total_rides': total_rides,
+        'wins': wins, 'places_2': places_2, 'places_3': places_3,
+        'win_rate': (wins / total_rides * 100) if total_rides > 0 else 0.0,
+        'place_rate_2': (places_2 / total_rides * 100) if total_rides > 0 else 0.0,
+        'place_rate_3': (places_3 / total_rides * 100) if total_rides > 0 else 0.0,
         'conditions': ', '.join(condition_desc),
-        'query': query
+        'matched_jockeys': df['jockey_name'].tolist(), 'query': query
     }
 
 
@@ -221,126 +309,16 @@ def get_jockey_stats(
         distance: 距離（メートル、例: 1600）
 
     Returns:
-        dict: {
-            'jockey_name': 騎手名,
-            'total_rides': 総騎乗回数,
-            'wins': 1着回数,
-            'places_2': 2着以内回数,
-            'places_3': 3着以内回数,
-            'win_rate': 勝率（%）,
-            'place_rate_2': 連対率（%）,
-            'place_rate_3': 複勝率（%）,
-            'conditions': 適用した条件の説明
-        }
+        dict: 騎手成績（勝率・連対率・複勝率等）
 
     Example:
         >>> result = get_jockey_stats(db_conn, 'ルメール', venue='東京', year_from='2023')
         >>> print(f"{result['jockey_name']}: 勝率 {result['win_rate']:.1f}%")
     """
-    # WHERE条件を構築
-    conditions = []
-    condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
-
-    # 騎手名（部分一致）- SQLインジェクション対策済み
-    safe_jockey_name = _escape_like_param(jockey_name)
-    conditions.append(f"s.KisyuRyakusyo LIKE '%{safe_jockey_name}%' ESCAPE '\\'")
-
-    # 確定着順がNULLでない（INTEGER型）
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni > 0")
-
-    # 競馬場
-    if venue:
-        venue_code = VENUE_CODES.get(venue)
-        if not venue_code:
-            raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
-        conditions.append(f"s.JyoCD = '{venue_code}'")
-        condition_desc.append(f"{venue}競馬場")
-
-    # 年（INTEGER型）
-    if year_from:
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
-
-    # 距離（INTEGER型、NL_RAと結合が必要）
-    if distance:
-        conditions.append(f"r.Kyori = {distance}")
-        condition_desc.append(f"{distance}m")
-
-    where_clause = " AND ".join(conditions)
-
-    # 距離指定がある場合はNL_RAと結合
-    if distance:
-        query = f"""
-        SELECT
-            s.KisyuRyakusyo as jockey_name,
-            COUNT(*) as total_rides,
-            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE s
-        JOIN NL_RA r
-            ON s.Year = r.Year
-            AND s.MonthDay = r.MonthDay
-            AND s.JyoCD = r.JyoCD
-            AND s.Kaiji = r.Kaiji
-            AND s.Nichiji = r.Nichiji
-            AND s.RaceNum = r.RaceNum
-        WHERE {where_clause}
-        GROUP BY s.KisyuRyakusyo
-        """
-    else:
-        query = f"""
-        SELECT
-            KisyuRyakusyo as jockey_name,
-            COUNT(*) as total_rides,
-            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE s
-        WHERE {where_clause}
-        GROUP BY KisyuRyakusyo
-        """
-
-    # クエリ実行
-    df = db_connection.execute_safe_query(query)
-
-    if df.empty:
-        return {
-            'jockey_name': jockey_name,
-            'total_rides': 0,
-            'wins': 0,
-            'places_2': 0,
-            'places_3': 0,
-            'win_rate': 0.0,
-            'place_rate_2': 0.0,
-            'place_rate_3': 0.0,
-            'conditions': ', '.join(condition_desc),
-            'query': query
-        }
-
-    # 複数の騎手がマッチする可能性があるため、合計を計算
-    total_rides = int(df['total_rides'].sum())
-    wins = int(df['wins'].sum())
-    places_2 = int(df['places_2'].sum())
-    places_3 = int(df['places_3'].sum())
-
-    # マッチした騎手名を取得（最も騎乗回数が多い騎手）
-    matched_jockey = df.loc[df['total_rides'].idxmax(), 'jockey_name'] if not df.empty else jockey_name
-
-    return {
-        'jockey_name': matched_jockey,
-        'total_rides': total_rides,
-        'wins': wins,
-        'places_2': places_2,
-        'places_3': places_3,
-        'win_rate': (wins / total_rides * 100) if total_rides > 0 else 0.0,
-        'place_rate_2': (places_2 / total_rides * 100) if total_rides > 0 else 0.0,
-        'place_rate_3': (places_3 / total_rides * 100) if total_rides > 0 else 0.0,
-        'conditions': ', '.join(condition_desc),
-        'matched_jockeys': df['jockey_name'].tolist(),
-        'query': query
-    }
+    return _jockey_stats_impl(
+        db_connection, jockey_name=jockey_name, venue=venue,
+        year_from=year_from, distance=distance, source='jra'
+    )
 
 
 def get_frame_stats(
@@ -456,6 +434,54 @@ def get_frame_stats(
     return df
 
 
+def _horse_history_impl(
+    db_connection,
+    horse_name: str,
+    year_from: Optional[str] = None,
+    source: str = 'jra'
+) -> pd.DataFrame:
+    """馬の戦績の共通実装（JRA/NAR兼用）"""
+    tables = _SOURCE_TABLES[source]
+    venue_map = ALL_VENUE_NAMES if source == 'nar' else VENUE_NAMES
+
+    safe_name = _escape_like_param(horse_name)
+    conditions = [
+        f"s.Bamei LIKE '%{safe_name}%' ESCAPE '\\'",
+        "s.KakuteiJyuni IS NOT NULL",
+        "s.KakuteiJyuni > 0"
+    ]
+    if year_from:
+        conditions.append(f"s.Year >= {year_from}")
+
+    where_clause = " AND ".join(conditions)
+
+    query = f"""
+    SELECT s.Year || '-' || s.MonthDay as race_date, s.JyoCD as venue_code,
+        r.Hondai as race_name, r.Kyori as distance,
+        s.KakuteiJyuni as finish, s.Ninki as popularity,
+        s.KisyuRyakusyo as jockey, s.Time as time, s.Bamei as horse_name
+    FROM {tables['se']} s
+    JOIN {tables['ra']} r
+        ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
+        AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
+    WHERE {where_clause}
+    ORDER BY s.Year DESC, s.MonthDay DESC
+    """
+
+    df = db_connection.execute_safe_query(query)
+
+    if df.empty:
+        return pd.DataFrame(columns=['race_date', 'venue', 'race_name', 'distance',
+                                    'finish', 'popularity', 'jockey', 'time'])
+
+    df['venue'] = df['venue_code'].map(venue_map)
+    df = df.drop(columns=['venue_code'])
+    df['finish'] = df['finish'].astype(str).str.lstrip('0').replace('', '0').astype(int)
+    df['popularity'] = df['popularity'].astype(str).str.lstrip('0').replace('', '0').astype(int)
+    df.attrs['query'] = query
+    return df
+
+
 def get_horse_history(
     db_connection,
     horse_name: str,
@@ -470,75 +496,13 @@ def get_horse_history(
 
     Returns:
         DataFrame: 馬の戦績詳細
-            - race_date: レース日（Year-MonthDay）
-            - venue: 競馬場
-            - race_name: レース名
-            - distance: 距離
-            - finish: 着順
-            - popularity: 人気
-            - jockey: 騎手名
-            - time: 走破タイム
 
     Example:
         >>> df = get_horse_history(db_conn, 'ディープインパクト')
         >>> print(df.to_string())
     """
-    conditions = []
-
-    # 馬名（部分一致）- SQLインジェクション対策済み
-    safe_horse_name = _escape_like_param(horse_name)
-    conditions.append(f"s.Bamei LIKE '%{safe_horse_name}%' ESCAPE '\\'")
-
-    # 確定着順がNULLでない（INTEGER型）
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
-    conditions.append("s.KakuteiJyuni > 0")
-
-    # 年（INTEGER型）
-    if year_from:
-        conditions.append(f"s.Year >= {year_from}")
-
-    where_clause = " AND ".join(conditions)
-
-    query = f"""
-    SELECT
-        s.Year || '-' || s.MonthDay as race_date,
-        s.JyoCD as venue_code,
-        r.Hondai as race_name,
-        r.Kyori as distance,
-        s.KakuteiJyuni as finish,
-        s.Ninki as popularity,
-        s.KisyuRyakusyo as jockey,
-        s.Time as time,
-        s.Bamei as horse_name
-    FROM NL_SE s
-    JOIN NL_RA r
-        ON s.Year = r.Year
-        AND s.MonthDay = r.MonthDay
-        AND s.JyoCD = r.JyoCD
-        AND s.Kaiji = r.Kaiji
-        AND s.Nichiji = r.Nichiji
-        AND s.RaceNum = r.RaceNum
-    WHERE {where_clause}
-    ORDER BY s.Year DESC, s.MonthDay DESC
-    """
-
-    df = db_connection.execute_safe_query(query)
-
-    if df.empty:
-        return pd.DataFrame(columns=['race_date', 'venue', 'race_name', 'distance',
-                                    'finish', 'popularity', 'jockey', 'time'])
-
-    # 競馬場コードを名称に変換
-    df['venue'] = df['venue_code'].map(VENUE_NAMES)
-    df = df.drop(columns=['venue_code'])
-
-    # 着順と人気を整数に変換（ゼロパディングを除去）
-    df['finish'] = df['finish'].astype(str).str.lstrip('0').replace('', '0').astype(int)
-    df['popularity'] = df['popularity'].astype(str).str.lstrip('0').replace('', '0').astype(int)
-
-    df.attrs['query'] = query
-
-    return df
+    return _horse_history_impl(db_connection, horse_name=horse_name,
+                               year_from=year_from, source='jra')
 
 
 def get_sire_stats(
@@ -680,18 +644,12 @@ def get_sire_stats(
 
 
 # ============================================================================
-# NAR（地方競馬）専用API
+# NAR（地方競馬）専用API — JRA版関数に委譲するラッパー
 # ============================================================================
 
 def _resolve_nar_venue(venue: str) -> str:
-    """NAR競馬場名をコードに変換。JRA/NAR両方を試す"""
-    code = NAR_VENUE_CODES.get(venue)
-    if code:
-        return code
-    code = VENUE_CODES.get(venue)
-    if code:
-        return code
-    raise ValueError(f"不明な競馬場名: {venue}. NAR: {list(NAR_VENUE_CODES.keys())}, JRA: {list(VENUE_CODES.keys())}")
+    """NAR競馬場名をコードに変換。JRA/NAR両方を試す（後方互換）"""
+    return _resolve_venue(venue, source='nar')
 
 
 def get_nar_favorite_performance(
@@ -701,75 +659,11 @@ def get_nar_favorite_performance(
     year_from: Optional[str] = None,
     distance: Optional[int] = None
 ) -> Dict[str, Any]:
-    """NAR地方競馬の人気別成績を取得
-
-    Args:
-        db_connection: DatabaseConnectionインスタンス
-        venue: 地方競馬場名（日本語、例: '大井', '船橋', '川崎'）
-        ninki: 人気順位（1-18）
-        year_from: 集計開始年
-        distance: 距離（メートル）
-
-    Returns:
-        dict: 勝率・連対率・複勝率等
-    """
-    conditions = [f"Ninki = {ninki}", "KakuteiJyuni IS NOT NULL", "KakuteiJyuni > 0"]
-    condition_desc = [f"{ninki}番人気", "NAR地方競馬"]
-
-    if venue:
-        venue_code = _resolve_nar_venue(venue)
-        conditions.append(f"s.JyoCD = '{venue_code}'")
-        condition_desc.append(f"{venue}競馬場")
-
-    if year_from:
-        conditions.append(f"s.Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
-
-    where_clause = " AND ".join(conditions)
-
-    if distance:
-        conditions_with_dist = conditions + [f"r.Kyori = {distance}"]
-        condition_desc.append(f"{distance}m")
-        where_clause = " AND ".join(conditions_with_dist)
-        query = f"""
-        SELECT COUNT(*) as total,
-            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE_NAR s
-        JOIN NL_RA_NAR r ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
-            AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
-        WHERE {where_clause}
-        """
-    else:
-        query = f"""
-        SELECT COUNT(*) as total,
-            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM NL_SE_NAR s WHERE {where_clause}
-        """
-
-    df = db_connection.execute_safe_query(query)
-
-    if df.empty or df.iloc[0]['total'] == 0:
-        return {'total': 0, 'wins': 0, 'places_2': 0, 'places_3': 0,
-                'win_rate': 0.0, 'place_rate_2': 0.0, 'place_rate_3': 0.0,
-                'conditions': ', '.join(condition_desc), 'query': query}
-
-    row = df.iloc[0]
-    total = int(row['total'])
-    wins = int(row['wins'])
-    places_2 = int(row['places_2'])
-    places_3 = int(row['places_3'])
-
-    return {
-        'total': total, 'wins': wins, 'places_2': places_2, 'places_3': places_3,
-        'win_rate': (wins / total * 100) if total > 0 else 0.0,
-        'place_rate_2': (places_2 / total * 100) if total > 0 else 0.0,
-        'place_rate_3': (places_3 / total * 100) if total > 0 else 0.0,
-        'conditions': ', '.join(condition_desc), 'query': query
-    }
+    """NAR地方競馬の人気別成績を取得（JRA版に委譲）"""
+    return _favorite_performance_impl(
+        db_connection, venue=venue, ninki=ninki, year_from=year_from,
+        distance=distance, source='nar'
+    )
 
 
 def get_nar_jockey_stats(
@@ -778,64 +672,11 @@ def get_nar_jockey_stats(
     venue: Optional[str] = None,
     year_from: Optional[str] = None
 ) -> Dict[str, Any]:
-    """NAR地方競馬の騎手成績を取得
-
-    Args:
-        db_connection: DatabaseConnectionインスタンス
-        jockey_name: 騎手名（部分一致検索）
-        venue: 地方競馬場名（日本語）
-        year_from: 集計開始年
-    """
-    safe_name = _escape_like_param(jockey_name)
-    conditions = [
-        f"KisyuRyakusyo LIKE '%{safe_name}%' ESCAPE '\\\\'",
-        "KakuteiJyuni IS NOT NULL", "KakuteiJyuni > 0"
-    ]
-    condition_desc = [f"騎手名: {jockey_name}（部分一致）", "NAR地方競馬"]
-
-    if venue:
-        venue_code = _resolve_nar_venue(venue)
-        conditions.append(f"JyoCD = '{venue_code}'")
-        condition_desc.append(f"{venue}競馬場")
-
-    if year_from:
-        conditions.append(f"Year >= {year_from}")
-        condition_desc.append(f"{year_from}年以降")
-
-    where_clause = " AND ".join(conditions)
-
-    query = f"""
-    SELECT KisyuRyakusyo as jockey_name, COUNT(*) as total_rides,
-        SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-        SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-        SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-    FROM NL_SE_NAR WHERE {where_clause}
-    GROUP BY KisyuRyakusyo
-    """
-
-    df = db_connection.execute_safe_query(query)
-
-    if df.empty:
-        return {'jockey_name': jockey_name, 'total_rides': 0, 'wins': 0,
-                'places_2': 0, 'places_3': 0, 'win_rate': 0.0,
-                'place_rate_2': 0.0, 'place_rate_3': 0.0,
-                'conditions': ', '.join(condition_desc), 'query': query}
-
-    total_rides = int(df['total_rides'].sum())
-    wins = int(df['wins'].sum())
-    places_2 = int(df['places_2'].sum())
-    places_3 = int(df['places_3'].sum())
-    matched_jockey = df.loc[df['total_rides'].idxmax(), 'jockey_name']
-
-    return {
-        'jockey_name': matched_jockey, 'total_rides': total_rides,
-        'wins': wins, 'places_2': places_2, 'places_3': places_3,
-        'win_rate': (wins / total_rides * 100) if total_rides > 0 else 0.0,
-        'place_rate_2': (places_2 / total_rides * 100) if total_rides > 0 else 0.0,
-        'place_rate_3': (places_3 / total_rides * 100) if total_rides > 0 else 0.0,
-        'conditions': ', '.join(condition_desc),
-        'matched_jockeys': df['jockey_name'].tolist(), 'query': query
-    }
+    """NAR地方競馬の騎手成績を取得（JRA版に委譲）"""
+    return _jockey_stats_impl(
+        db_connection, jockey_name=jockey_name, venue=venue,
+        year_from=year_from, source='nar'
+    )
 
 
 def get_nar_horse_history(
@@ -843,44 +684,7 @@ def get_nar_horse_history(
     horse_name: str,
     year_from: Optional[str] = None
 ) -> pd.DataFrame:
-    """NAR地方競馬の馬の戦績を取得
-
-    Args:
-        db_connection: DatabaseConnectionインスタンス
-        horse_name: 馬名（部分一致検索）
-        year_from: 集計開始年
-    """
-    safe_name = _escape_like_param(horse_name)
-    conditions = [
-        f"s.Bamei LIKE '%{safe_name}%' ESCAPE '\\\\'",
-        "s.KakuteiJyuni IS NOT NULL", "s.KakuteiJyuni > 0"
-    ]
-    if year_from:
-        conditions.append(f"s.Year >= {year_from}")
-
-    where_clause = " AND ".join(conditions)
-
-    query = f"""
-    SELECT s.Year || '-' || s.MonthDay as race_date, s.JyoCD as venue_code,
-        r.Hondai as race_name, r.Kyori as distance,
-        s.KakuteiJyuni as finish, s.Ninki as popularity,
-        s.KisyuRyakusyo as jockey, s.Time as time, s.Bamei as horse_name
-    FROM NL_SE_NAR s
-    JOIN NL_RA_NAR r ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
-        AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
-    WHERE {where_clause}
-    ORDER BY s.Year DESC, s.MonthDay DESC
-    """
-
-    df = db_connection.execute_safe_query(query)
-
-    if df.empty:
-        return pd.DataFrame(columns=['race_date', 'venue', 'race_name', 'distance',
-                                    'finish', 'popularity', 'jockey', 'time'])
-
-    df['venue'] = df['venue_code'].map(ALL_VENUE_NAMES)
-    df = df.drop(columns=['venue_code'])
-    df['finish'] = df['finish'].astype(str).str.lstrip('0').replace('', '0').astype(int)
-    df['popularity'] = df['popularity'].astype(str).str.lstrip('0').replace('', '0').astype(int)
-    df.attrs['query'] = query
-    return df
+    """NAR地方競馬の馬の戦績を取得（JRA版に委譲）"""
+    return _horse_history_impl(
+        db_connection, horse_name=horse_name, year_from=year_from, source='nar'
+    )
