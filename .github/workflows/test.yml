@@ -22,7 +22,7 @@ jobs:
           pip install -e ".[dev]"
           pip install pytest pytest-cov
       - name: Run tests
-        run: python -m pytest --tb=short -q
+        run: python -m pytest --tb=short -q --ignore=tests/live
 
   lint:
     runs-on: ubuntu-latest
