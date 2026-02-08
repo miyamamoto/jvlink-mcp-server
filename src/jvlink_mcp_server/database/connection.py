@@ -45,7 +45,7 @@ class DatabaseConnection:
         import sqlite3
         if not self.db_path:
             raise ValueError("DB_PATH environment variable not set for SQLite")
-        self.connection = sqlite3.connect(self.db_path)
+        self.connection = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
         return self.connection
 
     def _connect_duckdb(self):
@@ -53,7 +53,7 @@ class DatabaseConnection:
         import duckdb
         if not self.db_path:
             raise ValueError("DB_PATH environment variable not set for DuckDB")
-        self.connection = duckdb.connect(self.db_path)
+        self.connection = duckdb.connect(self.db_path, read_only=True)
         return self.connection
 
     def _connect_postgresql(self):
@@ -86,6 +86,11 @@ class DatabaseConnection:
             host=host, port=port, database=database,
             user=user, password=password
         )
+        # 読み取り専用モードに設定
+        cursor = self.connection.cursor()
+        cursor.execute("SET default_transaction_read_only = on")
+        self.connection.commit()
+        cursor.close()
         return self.connection
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
@@ -117,6 +122,10 @@ class DatabaseConnection:
         Raises:
             ValueError: 危険なクエリが検出された場合
         """
+        # 複文実行をブロック（セミコロンによる複数SQL文の実行を防止）
+        if ';' in query.strip().rstrip(';'):
+            raise ValueError("Multiple SQL statements are not allowed.")
+
         # 危険なキーワードをチェック
         dangerous_keywords = [
             "DROP", "DELETE", "UPDATE", "INSERT", "CREATE", "ALTER",
@@ -154,6 +163,11 @@ class DatabaseConnection:
             カラム情報を含むDataFrame (統一フォーマット: column_name, column_type)
         """
         conn = self.connect()
+
+        # テーブル名のホワイトリスト検証
+        valid_tables = self.get_tables()
+        if table_name not in valid_tables:
+            raise ValueError(f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}")
 
         if self.db_type == "sqlite":
             query = f"PRAGMA table_info({table_name})"
