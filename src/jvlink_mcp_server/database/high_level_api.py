@@ -59,9 +59,9 @@ ALL_VENUE_NAMES = {**VENUE_NAMES, **NAR_VENUE_NAMES}
 
 # グレードコード変換（入力形式→DBコード）
 GRADE_CODES = {
-    'G1': 'A', 'GI': 'A', 'G1': 'A',
-    'G2': 'B', 'GII': 'B', 'G2': 'B',
-    'G3': 'C', 'GIII': 'C', 'G3': 'C',
+    'G1': 'A', 'GI': 'A',
+    'G2': 'B', 'GII': 'B',
+    'G3': 'C', 'GIII': 'C',
     'A': 'A', 'B': 'B', 'C': 'C',
     'リステッド': 'D', 'オープン特別': 'E',
     '3勝': 'F', '2勝': 'G', '1勝': 'H',
