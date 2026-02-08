@@ -44,6 +44,7 @@ from .database.sample_data_provider import (
     get_column_value_examples as _get_column_value_examples,
     get_data_snapshot as _get_data_snapshot,
 )
+from .updater import check_for_updates, perform_update, startup_update_check
 
 # FastMCPサーバーの初期化
 mcp = FastMCP("JVLink MCP Server")
@@ -679,6 +680,21 @@ def get_database_overview() -> dict:
     """データベース全体の概要を取得"""
     with DatabaseConnection() as db:
         return _get_data_snapshot(db)
+
+
+@mcp.tool()
+def check_update() -> dict:
+    """サーバーの最新バージョンを確認する。アップデートがあるか確認します。"""
+    info = check_for_updates()
+    if info is None:
+        return {"error": "アップデートの確認に失敗しました。ネットワーク接続を確認してください。"}
+    return info
+
+
+@mcp.tool()
+def update_server() -> dict:
+    """サーバーを最新バージョンにアップデートする。git pull + 依存関係の更新を行います。"""
+    return perform_update()
 
 
 # サーバーのエントリーポイント
