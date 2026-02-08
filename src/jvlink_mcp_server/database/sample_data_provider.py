@@ -212,11 +212,11 @@ def _get_column_info(table_name: str) -> Dict[str, str]:
     column_info = {
         "NL_SE": {
             "KettoNum": "血統登録番号（NL_UMとJOINするためのキー）",
-            "KakuteiJyuni": "確定着順。01=1着, 02=2着...（ゼロパディング2桁）",
-            "Ninki": "人気順位。01=1番人気, 02=2番人気...（ゼロパディング2桁）",
-            "JyoCD": "競馬場コード。01=札幌, 05=東京, 06=中山...（ゼロパディング2桁）",
-            "Umaban": "馬番。01-18（ゼロパディング2桁）",
-            "Wakuban": "枠番。1-8（1桁）",
+            "KakuteiJyuni": "確定着順。1=1着, 2=2着...（INTEGER型）",
+            "Ninki": "人気順位。1=1番人気, 2=2番人気...（INTEGER型）",
+            "JyoCD": "競馬場コード。01=札幌, 05=東京, 06=中山...（TEXT型、ゼロパディング2桁）",
+            "Umaban": "馬番。1-18（INTEGER型）",
+            "Wakuban": "枠番。1-8（INTEGER型）",
             "Odds": "単勝オッズ",
             "BaTaijyu": "馬体重（kg）",
             "HaronTimeL3": "上がり3Fタイム（0.1秒単位、例: 334=33.4秒）",
@@ -246,20 +246,21 @@ def _get_data_format_notes(table_name: str) -> List[str]:
     """データ形式の注意事項を取得"""
 
     common_notes = [
-        "すべてのカラムはTEXT型です",
-        "数値比較時は文字列比較になるため注意が必要です",
+        "jrvltsql v1.1.0以降: 数値カラム（Year, Ninki, KakuteiJyuni等）はINTEGER型",
+        "コード系カラム（JyoCD, GradeCD等）はTEXT型のまま",
     ]
 
     table_specific_notes = {
         "NL_SE": [
-            "KakuteiJyuni='01'は1着、'02'は2着（ゼロパディング必須）",
-            "Ninki='01'は1番人気（ゼロパディング必須）",
-            "JyoCD='05'は東京競馬場（ゼロパディング必須）",
-            "KakuteiJyuni='00'や空文字はレース未確定または除外馬",
+            "KakuteiJyuni=1は1着、2は2着（INTEGER型、ゼロパディング不要）",
+            "Ninki=1は1番人気（INTEGER型）",
+            "JyoCD='05'は東京競馬場（TEXT型、ゼロパディング必須）",
+            "KakuteiJyuni=0やNULLはレース未確定または除外馬",
         ],
         "NL_RA": [
             "GradeCD='A'はG1レース、'B'はG2、'C'はG3",
             "TrackCDは複合コード（例: '11'=芝・良）",
+            "Kyori=1600 のようにINTEGER型",
         ],
         "NL_UM": [
             "KettoNumは馬の一意識別子として他テーブルと結合可能",

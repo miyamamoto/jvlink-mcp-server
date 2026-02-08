@@ -112,9 +112,9 @@ class TestGetFavoritePerformance:
 
         result = get_favorite_performance(mock_db, ninki=5)
 
-        # クエリに05（ゼロパディング）が含まれているか確認
+        # INTEGER型なのでゼロパディングなし
         call_args = mock_db.execute_safe_query.call_args[0][0]
-        assert "Ninki = '05'" in call_args
+        assert "Ninki = 5" in call_args
 
 
 class TestGetJockeyStats:
@@ -204,7 +204,7 @@ class TestGetFrameStats:
 
         call_args = mock_db.execute_safe_query.call_args[0][0]
         assert "JyoCD = '05'" in call_args
-        assert "Kyori = '1600'" in call_args
+        assert "Kyori = 1600" in call_args
 
     def test_empty_result(self, mock_db):
         """結果が空の場合のテスト"""
@@ -296,7 +296,7 @@ class TestGetSireStats:
         call_args = mock_db.execute_safe_query.call_args[0][0]
         assert "Bamei1 LIKE '%ディープインパクト%'" in call_args
         assert "JyoCD = '05'" in call_args
-        assert "Kyori = '1600'" in call_args
+        assert "Kyori = 1600" in call_args
 
 
 class TestConstants:

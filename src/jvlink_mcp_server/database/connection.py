@@ -1,10 +1,12 @@
 """Database connection manager for JVLink databases"""
 
+import logging
 import os
-import sqlite3
 from typing import Any, Optional
 import warnings
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Suppress pandas DuckDB connection warning
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy')
@@ -27,6 +29,8 @@ class DatabaseConnection:
         if self.connection is not None:
             return self.connection
 
+        logger.info(f"Connecting to {self.db_type} database...")
+
         if self.db_type == "sqlite":
             return self._connect_sqlite()
         elif self.db_type == "duckdb":
@@ -34,7 +38,7 @@ class DatabaseConnection:
         elif self.db_type == "postgresql":
             return self._connect_postgresql()
         else:
-            raise ValueError(f"Unsupported database type: {self.db_type}")
+            raise ValueError(f"Unsupported database type: {self.db_type}. Supported: sqlite, duckdb, postgresql")
 
     def _connect_sqlite(self):
         """SQLiteに接続"""
@@ -53,17 +57,34 @@ class DatabaseConnection:
         return self.connection
 
     def _connect_postgresql(self):
-        """PostgreSQLに接続"""
-        import psycopg2
-        if not self.db_connection_string:
-            raise ValueError("DB_CONNECTION_STRING environment variable not set for PostgreSQL")
-
-        # パスワードを環境変数から取得
-        password = os.getenv("JVLINK_DB_PASSWORD")
-        if password and "Password=" not in self.db_connection_string:
-            self.db_connection_string += f";Password={password}"
-
-        self.connection = psycopg2.connect(self.db_connection_string)
+        """PostgreSQLに接続（pg8000を使用）"""
+        import pg8000.dbapi
+        
+        # 環境変数から接続情報を取得
+        host = os.getenv("DB_HOST", "localhost")
+        port = int(os.getenv("DB_PORT", "5432"))
+        database = os.getenv("DB_NAME", "keiba")
+        user = os.getenv("DB_USER", "postgres")
+        password = os.getenv("DB_PASSWORD", os.getenv("JVLINK_DB_PASSWORD", ""))
+        
+        # DB_CONNECTION_STRINGが設定されている場合はそちらを優先（後方互換性）
+        if self.db_connection_string:
+            # key=value形式のパース
+            params = {}
+            for part in self.db_connection_string.replace(";", " ").split():
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    params[k.lower()] = v
+            host = params.get("host", host)
+            port = int(params.get("port", port))
+            database = params.get("database", database)
+            user = params.get("username", params.get("user", user))
+            password = params.get("password", password)
+        
+        self.connection = pg8000.dbapi.connect(
+            host=host, port=port, database=database,
+            user=user, password=password
+        )
         return self.connection
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
