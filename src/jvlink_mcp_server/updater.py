@@ -186,7 +186,7 @@ def perform_update(confirmed: bool = False) -> dict:
     # Step 2: git pull
     try:
         result = subprocess.run(
-            ["git", "pull", "--ff-only", "origin", "master"],
+            ["git", "pull", "--ff-only"],
             capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=60,
         )
         if result.returncode != 0:
