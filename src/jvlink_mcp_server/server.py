@@ -14,6 +14,7 @@ from .database.schema_info import (
     get_schema_description,
     get_target_equivalent_query_examples,
     TRACK_CODES,
+    NAR_TRACK_CODES,
     GRADE_CODES,
 )
 from .database.schema_descriptions import (
@@ -34,6 +35,9 @@ from .database.high_level_api import (
     get_frame_stats as _get_frame_stats,
     get_horse_history as _get_horse_history,
     get_sire_stats as _get_sire_stats,
+    get_nar_favorite_performance as _get_nar_favorite_performance,
+    get_nar_jockey_stats as _get_nar_jockey_stats,
+    get_nar_horse_history as _get_nar_horse_history,
 )
 from .database.sample_data_provider import (
     get_sample_data as _get_sample_data,
@@ -44,12 +48,24 @@ from .database.sample_data_provider import (
 # FastMCPサーバーの初期化
 mcp = FastMCP("JVLink MCP Server")
 
-# データディレクトリのパス
+# データディレクトリのパス（パッケージルートからの相対パス）
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
 # 特徴量知見データの読み込み
-with open(DATA_DIR / "feature_importance.json", "r", encoding="utf-8") as f:
-    FEATURE_IMPORTANCE_DATA = json.load(f)
+_feature_importance_path = DATA_DIR / "feature_importance.json"
+if _feature_importance_path.exists():
+    with open(_feature_importance_path, "r", encoding="utf-8") as f:
+        FEATURE_IMPORTANCE_DATA = json.load(f)
+else:
+    import logging
+    logging.getLogger(__name__).warning(
+        f"feature_importance.json not found at {_feature_importance_path}"
+    )
+    FEATURE_IMPORTANCE_DATA = {
+        "important_features": [],
+        "feature_combinations": [],
+        "references": []
+    }
 
 
 
@@ -153,6 +169,15 @@ def track_codes_resource() -> str:
     JVLinkで使用される競馬場コードのマスタデータ
     """
     return json.dumps(TRACK_CODES, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("codes://nar_tracks")
+def nar_track_codes_resource() -> str:
+    """NAR地方競馬場コード一覧
+
+    NARで使用される地方競馬場コードのマスタデータ（30-57）
+    """
+    return json.dumps(NAR_TRACK_CODES, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("codes://grades")
@@ -531,6 +556,63 @@ def analyze_sire_stats(
             db, sire_name=sire_name, venue=venue,
             distance=distance, year_from=year_from
         )
+
+
+# ============================================================================
+# NAR（地方競馬）High-level API
+# ============================================================================
+
+@mcp.tool(name="nar_favorite_performance")
+def analyze_nar_favorite_performance(
+    ninki: int = 1,
+    venue: Optional[str] = None,
+    year_from: Optional[str] = None,
+    distance: Optional[int] = None
+) -> dict:
+    """NAR地方競馬の人気別成績を分析
+
+    大井、船橋、川崎、浦和、名古屋、園田など地方競馬場の人気別勝率を調べられます。
+    """
+    with DatabaseConnection() as db:
+        return _get_nar_favorite_performance(
+            db, venue=venue, ninki=ninki,
+            year_from=year_from, distance=distance
+        )
+
+
+@mcp.tool(name="nar_jockey_stats")
+def analyze_nar_jockey_stats(
+    jockey_name: str,
+    venue: Optional[str] = None,
+    year_from: Optional[str] = None
+) -> dict:
+    """NAR地方競馬の騎手成績を分析
+
+    地方競馬の騎手名を指定して、勝率・複勝率・騎乗数などを調べられます。
+    """
+    with DatabaseConnection() as db:
+        return _get_nar_jockey_stats(
+            db, jockey_name=jockey_name, venue=venue, year_from=year_from
+        )
+
+
+@mcp.tool(name="nar_horse_history")
+def get_nar_horse_race_history(
+    horse_name: str,
+    year_from: Optional[str] = None
+) -> dict:
+    """NAR地方競馬の馬の過去レース戦績を取得
+
+    地方競馬で出走した馬の戦績を一覧できます。
+    """
+    with DatabaseConnection() as db:
+        df = _get_nar_horse_history(db, horse_name=horse_name, year_from=year_from)
+        return {
+            "horse_name": horse_name,
+            "total_races": len(df),
+            "data": df.to_dict(orient="records"),
+            "columns": df.columns.tolist()
+        }
 
 
 # ============================================================================

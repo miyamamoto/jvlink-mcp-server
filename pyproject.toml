@@ -1,6 +1,6 @@
 [project]
 name = "jvlink-mcp-server"
-version = "0.1.0"
+version = "0.2.0"
 description = "JVLink MCP Server - 競馬データ分析MCPサーバー"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -10,7 +10,7 @@ dependencies = [
     "matplotlib>=3.10.7",
     "mcp[cli]>=1.21.0",
     "pandas>=2.3.3",
-    "psycopg2-binary>=2.9.11",
+    "pg8000>=1.31.2",
     "python-dotenv>=1.0.0",
     "seaborn>=0.13.2",
 ]
@@ -21,3 +21,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jvlink_mcp_server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
