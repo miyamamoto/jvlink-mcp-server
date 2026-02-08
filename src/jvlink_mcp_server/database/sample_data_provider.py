@@ -53,28 +53,45 @@ def get_sample_data(
             'data_format_notes': データ形式の注意事項
         }
     """
+    # num_rows上限チェック
+    num_rows = min(max(1, num_rows), 100)
+
+    # テーブル名のホワイトリスト検証
+    valid_tables = db_connection.get_tables()
+    if table_name not in valid_tables:
+        return {
+            "table_name": table_name,
+            "error": f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}",
+            "columns": [],
+            "sample_rows": [],
+        }
+
     cache_key = f"{table_name}_{num_rows}_{where_clause}"
 
     if use_cache and cache_key in _sample_data_cache:
         return _sample_data_cache[cache_key]
 
-    # 重要カラムを優先して取得
+    # 重要カラムを優先して取得（ホワイトリスト検証）
     important_cols = IMPORTANT_COLUMNS.get(table_name, [])
 
     if important_cols:
-        columns_str = ", ".join(important_cols)
+        # カラム名をスキーマ情報でホワイトリスト検証
+        try:
+            schema_df = db_connection.get_table_schema(table_name)
+            valid_columns = set(schema_df["column_name"].tolist())
+            verified_cols = [c for c in important_cols if c in valid_columns]
+            columns_str = ", ".join(verified_cols) if verified_cols else "*"
+        except Exception:
+            columns_str = "*"
     else:
         columns_str = "*"
 
-    # SQL構築
+    # SQL構築（where_clauseは無視 - SQLインジェクション対策）
     sql = f"SELECT {columns_str} FROM {table_name}"
-
-    if where_clause:
-        sql += f" WHERE {where_clause}"
 
     # 結果データがあるレコードを優先（NL_SEの場合）
     if table_name == "NL_SE":
-        sql += " AND KakuteiJyuni IS NOT NULL AND KakuteiJyuni != ''" if where_clause else " WHERE KakuteiJyuni IS NOT NULL AND KakuteiJyuni != ''"
+        sql += " WHERE KakuteiJyuni IS NOT NULL AND KakuteiJyuni != ''"
 
     sql += f" LIMIT {num_rows}"
 
@@ -125,6 +142,22 @@ def get_column_value_examples(
             'value_counts': 値ごとの件数（上位10件）
         }
     """
+    # テーブル名・カラム名のホワイトリスト検証
+    valid_tables = db_connection.get_tables()
+    if table_name not in valid_tables:
+        return {"table_name": table_name, "column_name": column_name, "error": f"テーブル '{table_name}' は存在しません。"}
+
+    try:
+        schema_df = db_connection.get_table_schema(table_name)
+        valid_columns = set(schema_df["column_name"].tolist())
+        if column_name not in valid_columns:
+            return {"table_name": table_name, "column_name": column_name, "error": f"カラム '{column_name}' は存在しません。"}
+    except Exception as e:
+        return {"table_name": table_name, "column_name": column_name, "error": str(e)}
+
+    # limit上限
+    limit = min(max(1, limit), 100)
+
     # ユニーク値取得
     sql = f"""
     SELECT {column_name}, COUNT(*) as cnt

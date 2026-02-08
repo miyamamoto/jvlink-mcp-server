@@ -11,7 +11,7 @@ load_dotenv()
 from .server import mcp
 
 # Get server configuration
-HOST = os.getenv("MCP_HOST", "0.0.0.0")
+HOST = os.getenv("MCP_HOST", "127.0.0.1")
 PORT = int(os.getenv("MCP_PORT", "8000"))
 
 
