@@ -522,8 +522,13 @@ def render_template(template_name: str, **params) -> Tuple[str, tuple]:
 
         # 年の条件（INTEGER型）
         elif key == "year":
-            formatted_params["year_condition"] = "AND Year = ?"
-            query_params.append(_to_int(value))
+            # テンプレートSQL内に {year} プレースホルダがある場合は直接埋め込み
+            if "{year}" in sql_template:
+                formatted_params["year"] = "?"
+                query_params.append(_to_int(value))
+            else:
+                formatted_params["year_condition"] = "AND Year = ?"
+                query_params.append(_to_int(value))
 
         elif key == "year_from":
             formatted_params["year_condition"] = "AND Year >= ?"
