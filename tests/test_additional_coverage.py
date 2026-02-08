@@ -181,6 +181,7 @@ class TestRenderAllTemplates:
         "nar_jockey_stats": {},
         "nar_venue_stats": {},
         "track_condition_stats": {"horse_name": "テスト"},
+        "race_search": {"race_name": "ダービー"},
     }
 
     # race_result uses {year} directly but render_template maps year→year_condition;
