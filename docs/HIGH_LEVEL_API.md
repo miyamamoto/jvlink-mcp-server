@@ -4,6 +4,8 @@
 
 `high_level_api.py`は、JVLinkデータベースでよく使われる分析パターンを簡単に実行できる高レベルAPIを提供します。SQLクエリを直接書く必要がなく、Pythonの関数を呼び出すだけで複雑な集計が可能です。
 
+> **v0.5.0の変更点:** MCPツール名が `generate_sql_from_natural_language` から `get_sql_generation_prompt` に変更されました。MCPクライアントの設定やプロンプトでこのツール名を参照している場合は更新してください。
+
 ## インストール
 
 ```bash

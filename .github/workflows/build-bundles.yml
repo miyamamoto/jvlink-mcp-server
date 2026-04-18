@@ -12,7 +12,23 @@ on:
         default: '0.1.0'
 
 jobs:
+  test:
+    name: Unit tests (required before release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --dev
+      - name: Run unit tests
+        run: uv run pytest tests/unit/ tests/test_connection.py tests/test_query_corrector.py tests/test_query_templates.py tests/test_high_level_api.py -v --tb=short
+      - name: Verify imports
+        run: uv run python -c "from jvlink_mcp_server.server import mcp; print('OK')"
+        env:
+          DB_TYPE: sqlite
+          DB_PATH: ":memory:"
+
   build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:

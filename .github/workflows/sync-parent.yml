@@ -1,0 +1,146 @@
+name: Sync with jrvltsql
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 毎日 01:00 UTC (日本時間 10:00)
+  workflow_dispatch:
+
+jobs:
+  check-and-release:
+    name: Check jrvltsql → auto-release if tests pass
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # タグ操作に必要
+
+      # ── 1. 親プロジェクトの最新バージョンを取得 ──────────────────────────
+      - name: Get latest jrvltsql release
+        id: parent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST=$(gh api repos/miyamamoto/jrvltsql/releases/latest \
+            --jq '.tag_name' 2>/dev/null || echo "")
+
+          if [ -z "$LATEST" ]; then
+            LATEST=$(gh api repos/miyamamoto/jrvltsql/tags \
+              --jq '.[0].name' 2>/dev/null || echo "unknown")
+          fi
+
+          STORED=$(cat .github/jrvltsql_version.txt | tr -d '[:space:]')
+
+          echo "latest=$LATEST"  >> $GITHUB_OUTPUT
+          echo "stored=$STORED"  >> $GITHUB_OUTPUT
+
+          if [ "$LATEST" != "$STORED" ] && [ "$LATEST" != "unknown" ] && [ -n "$LATEST" ]; then
+            echo "new_release=true" >> $GITHUB_OUTPUT
+            echo "::notice::New jrvltsql release detected: $STORED → $LATEST"
+          else
+            echo "new_release=false" >> $GITHUB_OUTPUT
+            echo "::notice::jrvltsql is up to date ($STORED). Nothing to do."
+          fi
+
+      # ── 2. 新バージョンがなければ終了 ─────────────────────────────────────
+      - name: Skip if no new release
+        if: steps.parent.outputs.new_release == 'false'
+        run: exit 0
+
+      # ── 3. 単体テストを実行（DB不要） ────────────────────────────────────
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        id: tests
+        run: |
+          uv run pytest \
+            tests/unit/ \
+            tests/test_connection.py \
+            tests/test_query_corrector.py \
+            tests/test_query_templates.py \
+            tests/test_high_level_api.py \
+            -v --tb=short 2>&1 | tee test_output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      # ── 4a. テスト失敗 → Issue を開いて終了 ──────────────────────────────
+      - name: Open issue on test failure
+        if: steps.tests.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const latest = '${{ steps.parent.outputs.latest }}';
+            const stored = '${{ steps.parent.outputs.stored }}';
+            const fs = require('fs');
+            const output = fs.readFileSync('test_output.txt', 'utf8').slice(-3000);
+
+            const label = 'parent-update';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: 'open',
+              labels: label,
+            });
+            if (existing.data.some(i => i.title.includes(latest))) return;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `⚠️ jrvltsql ${latest} — テスト失敗・手動確認が必要です`,
+              labels: [label],
+              body: [
+                '## jrvltsql 新バージョンでテストが失敗しました',
+                '',
+                `**旧バージョン**: \`${stored}\`  **新バージョン**: \`${latest}\``,
+                '',
+                '### テスト出力（末尾 3000 文字）',
+                '```',
+                output,
+                '```',
+                '',
+                '### 対応手順',
+                '1. 上記エラーを確認し、スキーマ変更に合わせてコードを修正',
+                '2. テストが通ることを確認したら `.github/jrvltsql_version.txt` を更新',
+                '3. バージョンを手動でバンプしてタグ付け → 自動リリース',
+              ].join('\n'),
+            });
+
+      - name: Fail job on test failure
+        if: steps.tests.outputs.exit_code != '0'
+        run: exit 1
+
+      # ── 4b. テスト成功 → バージョンバンプ＆自動リリース ─────────────────
+      - name: Bump patch version
+        id: bump
+        run: |
+          CURRENT=$(grep '^version' pyproject.toml | head -1 | cut -d'"' -f2)
+          MAJOR=$(echo $CURRENT | cut -d. -f1)
+          MINOR=$(echo $CURRENT | cut -d. -f2)
+          PATCH=$(echo $CURRENT | cut -d. -f3)
+          NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "new=$NEW"         >> $GITHUB_OUTPUT
+          echo "tag=v$NEW"        >> $GITHUB_OUTPUT
+
+          # pyproject.toml のバージョンを更新
+          sed -i "s/^version = \"$CURRENT\"/version = \"$NEW\"/" pyproject.toml
+
+      - name: Update tracked jrvltsql version
+        run: echo "${{ steps.parent.outputs.latest }}" > .github/jrvltsql_version.txt
+
+      - name: Commit and tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add pyproject.toml .github/jrvltsql_version.txt
+          git commit -m "chore: bump to ${{ steps.bump.outputs.new }} (jrvltsql ${{ steps.parent.outputs.latest }})"
+          git tag ${{ steps.bump.outputs.tag }}
+          git push origin HEAD:master --follow-tags

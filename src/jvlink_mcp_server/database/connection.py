@@ -6,6 +6,8 @@ from typing import Any, Optional
 import warnings
 import pandas as pd
 
+from .utils import validate_identifier
+
 logger = logging.getLogger(__name__)
 
 # Suppress pandas DuckDB connection warning
@@ -166,7 +168,8 @@ class DatabaseConnection:
         Returns:
             カラム情報を含むDataFrame (統一フォーマット: column_name, column_type)
         """
-        conn = self.connect()
+        validate_identifier(table_name, "table name")
+        self.connect()
 
         # テーブル名のホワイトリスト検証
         valid_tables = self.get_tables()
@@ -176,22 +179,20 @@ class DatabaseConnection:
         if self.db_type == "sqlite":
             query = f"PRAGMA table_info({table_name})"
             df = self.execute_query(query)
-            # SQLiteの結果を統一フォーマットに変換: name -> column_name, type -> column_type
             df = df.rename(columns={"name": "column_name", "type": "column_type"})
 
         elif self.db_type == "duckdb":
             query = f"DESCRIBE {table_name}"
             df = self.execute_query(query)
-            # DuckDBは既に column_name, column_type を使用しているのでそのまま
 
         elif self.db_type == "postgresql":
             query = """
                 SELECT column_name, data_type, is_nullable
                 FROM information_schema.columns
                 WHERE table_name = %s
+                ORDER BY ordinal_position
             """
             df = self.execute_query(query, params=(table_name,))
-            # PostgreSQLの結果を統一フォーマットに変換: data_type -> column_type
             df = df.rename(columns={"data_type": "column_type"})
 
         return df

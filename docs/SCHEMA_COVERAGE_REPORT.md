@@ -1,5 +1,7 @@
 # JVLink Schema Description Coverage Report
 
+> **注意:** このレポートは現在の jrvltsql スキーマ（テーブル名: `NL_RA`, `NL_SE`, `NL_UM` 等）を対象として生成されています。
+
 ## 概要
 
 データベーススキーマに網羅的な説明を追加し、LLMがより正確なクエリを生成できるようにしました。
@@ -18,9 +20,9 @@
 
 | テーブル名 | カラム数 | カバレッジ | 説明 |
 |-----------|---------|-----------|------|
-| **NL_RA_RACE** | 110 | **100%** | レース基本情報（競馬場、距離、グレード等） |
-| **NL_SE_RACE_UMA** | 73 | **100%** | 出馬表（騎手、オッズ、馬体重等） |
-| **NL_UM_UMA** | 227 | **100%** | 馬マスタ（血統、成績、馬主等） |
+| **NL_RA** | 62 | **100%** | レース基本情報（競馬場、距離、グレード等） |
+| **NL_SE** | 70 | **100%** | 出馬表（騎手、オッズ、馬体重等） |
+| **NL_UM** | 227 | **100%** | 馬マスタ（血統、成績、馬主等） |
 | NL_CH_CHOKYOSI | 576 | 81.3% | 調教師マスタ（本年前年累計成績等） |
 | NL_KS_KISYU | 621 | 82.6% | 騎手マスタ（本年前年累計成績等） |
 | NL_HR_PAY | 199 | 73.9% | 払戻情報（単勝、複勝、馬連等） |
@@ -34,8 +36,8 @@
 
 ```python
 COLUMN_DESCRIPTIONS = {
-    "NL_RA_RACE": {
-        "idJyoCD": "競馬場コード（01=札幌, 02=函館, ..., 10=小倉）",
+    "NL_RA": {
+        "JyoCD": "競馬場コード（01=札幌, 02=函館, ..., 10=小倉）",
         "GradeCD": "グレードコード（A=G1, B=G2, C=G3, ...）",
         # ...
     }
@@ -49,7 +51,7 @@ COLUMN_DESCRIPTIONS = {
 #### サポートパターン
 
 1. **共通ヘッダー**: headRecordSpec, headDataKubun, headMakeDate
-2. **識別子**: idYear, idMonthDay, idJyoCD, idKaiji, etc.
+2. **識別子**: Year, MonthDay, JyoCD, Kaiji, etc.
 3. **レース情報**: RaceInfo*, GradeCD, JyokenInfo*
 4. **賞金**: Honsyokin0-6（1着～着外本賞金）
 5. **ラップタイム**: LapTime0-24（25ハロン分）
@@ -115,20 +117,20 @@ def get_table_info(table_name: str) -> dict:
 ### Before（説明なし）
 
 ```
-SELECT idJyoCD, GradeCD FROM NL_RA_RACE
+SELECT JyoCD, GradeCD FROM NL_RA
 ```
 
-LLMは`idJyoCD`や`GradeCD`の意味がわからないため、正確な条件を指定できない。
+LLMは`JyoCD`や`GradeCD`の意味がわからないため、正確な条件を指定できない。
 
 ### After（説明あり）
 
 ```sql
--- 東京競馬場（idJyoCD='05'）のG1レース（GradeCD='A'）を取得
+-- 東京競馬場（JyoCD='05'）のG1レース（GradeCD='A'）を取得
 SELECT
-    idJyoCD,  -- 競馬場コード（01=札幌, 02=函館, ..., 05=東京, ..., 10=小倉）
+    JyoCD,    -- 競馬場コード（01=札幌, 02=函館, ..., 05=東京, ..., 10=小倉）
     GradeCD   -- グレードコード（A=G1, B=G2, C=G3, ...）
-FROM NL_RA_RACE
-WHERE idJyoCD = '05'  -- 東京
+FROM NL_RA
+WHERE JyoCD = '05'    -- 東京
   AND GradeCD = 'A'    -- G1
 ```
 
@@ -151,9 +153,9 @@ Coverage: 90.3%
 
 ```bash
 $ uv run python test_mcp_schema.py
-NL_RA_RACE: Coverage 110/110 (100.0%)
-NL_SE_RACE_UMA: Coverage 73/73 (100.0%)
-NL_UM_UMA: Coverage 227/227 (100.0%)
+NL_RA: Coverage 62/62 (100.0%)
+NL_SE: Coverage 70/70 (100.0%)
+NL_UM: Coverage 227/227 (100.0%)
 ```
 
 ## ファイル構成
@@ -174,7 +176,7 @@ jvlink-mcp-server/
 ## まとめ
 
 - **90.3%のカバレッジ**を達成し、2,256カラムのうち2,037カラムに説明を付与
-- **主要3テーブル（NL_RA_RACE、NL_SE_RACE_UMA、NL_UM_UMA）は100%カバレッジ**
+- **主要3テーブル（NL_RA、NL_SE、NL_UM）は100%カバレッジ**
 - パターンマッチングにより、複雑な配列構造（HonZenRuikei、PayInfo等）も網羅
 - MCPサーバーの`get_table_info()`ツールで、LLMに説明を提供
 - LLMがより正確なSQLクエリを生成できるようになった
