@@ -131,7 +131,7 @@ class TestTableWhitelist:
 
     def test_sql_injection_in_table_name(self, db_connection):
         """テーブル名へのSQLインジェクション試行"""
-        with pytest.raises(ValueError, match="存在しません"):
+        with pytest.raises(ValueError, match="Invalid table name"):
             db_connection.get_table_schema("NL_SE; DROP TABLE NL_SE--")
 
 
