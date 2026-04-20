@@ -26,33 +26,33 @@ MCPの `get_table_info()` ツールが以下の情報を返すように拡張：
 
 ```json
 {
-  "table_name": "NL_RA_RACE",
+  "table_name": "NL_RA",
   "columns": [
-    {"name": "idYear", "type": "VARCHAR"},
-    {"name": "idJyoCD", "type": "VARCHAR"},
+    {"name": "Year", "type": "VARCHAR"},
+    {"name": "JyoCD", "type": "VARCHAR"},
     {"name": "GradeCD", "type": "VARCHAR"}
   ]
 }
 ```
 
-LLMは「idJyoCD」が何を意味するか推測するしかない → **誤ったクエリ生成**
+LLMは「JyoCD」が何を意味するか推測するしかない → **誤ったクエリ生成**
 
 ### After（説明付き）
 
 ```json
 {
-  "table_name": "NL_RA_RACE",
+  "table_name": "NL_RA",
   "table_description": "レース情報テーブル - 各レースの基本情報、条件、グレード等",
-    "primary_keys": ["idYear", "idMonthDay", "idJyoCD", "idKaiji", "idNichiji", "idRaceNum"],
-  "total_columns": 110,
+    "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+  "total_columns": 62,
   "columns": [
     {
-      "name": "idYear",
+      "name": "Year",
       "type": "VARCHAR",
       "description": "開催年（YYYY形式）"
     },
     {
-      "name": "idJyoCD",
+      "name": "JyoCD",
       "type": "VARCHAR",
       "description": "競馬場コード（01=札幌, 02=函館, 03=福島, 04=新潟, 05=東京, 06=中山, 07=中京, 08=京都, 09=阪神, 10=小倉）"
     },
@@ -72,11 +72,11 @@ LLMは各カラムの意味を正確に理解 → **正確なクエリ生成**
 
 | テーブル名 | 説明 | 主要カラム説明数 |
 |-----------|------|--------------|
-| **NL_RA_RACE** | レース情報 | 20カラム |
-| **NL_SE_RACE_UMA** | 出馬表 | 25カラム |
-| **NL_UM_UMA** | 馬マスタ | 18カラム |
-| **NL_KS_KISYU** | 騎手マスタ | 7カラム |
-| **NL_CH_CHOKYOSI** | 調教師マスタ | 5カラム |
+| **NL_RA** | レース情報 | 20カラム |
+| **NL_SE** | 出馬表 | 25カラム |
+| **NL_UM** | 馬マスタ | 18カラム |
+| **NL_KS** | 騎手マスタ | 7カラム |
+| **NL_CH** | 調教師マスタ | 5カラム |
 
 ### 説明されている内容の例
 
@@ -89,7 +89,7 @@ LLMは各カラムの意味を正確に理解 → **正確なクエリ生成**
 #### コード値の説明
 
 - `GradeCD`: "A=G1, B=G2, C=G3, D=リステッド, E=オープン特別..."
-- `idJyoCD`: "01=札幌, 02=函館, ..., 10=小倉"
+- `JyoCD`: "01=札幌, 02=函館, ..., 10=小倉"
 - `JyokenInfoSyubetuCD`: "11=芝, 21=ダート, 23=障害芝, 24=障害ダート"
 
 #### データ形式の説明
@@ -100,28 +100,28 @@ LLMは各カラムの意味を正確に理解 → **正確なクエリ生成**
 
 ## クエリ生成ヒント
 
-主要テーブル（NL_RA_RACE, NL_SE_RACE_UMA）には、よく使うクエリパターンも含まれています：
+主要テーブル（NL_RA, NL_SE）には、よく使うクエリパターンも含まれています：
 
 ### 結合パターン
 
 ```sql
 -- レース情報 + 出馬表
-FROM NL_RA_RACE r
-JOIN NL_SE_RACE_UMA s
-  ON r.idYear = s.idYear
-  AND r.idMonthDay = s.idMonthDay
-  AND r.idJyoCD = s.idJyoCD
-  AND r.idKaiji = s.idKaiji
-  AND r.idNichiji = s.idNichiji
-  AND r.idRaceNum = s.idRaceNum
+FROM NL_RA r
+JOIN NL_SE s
+  ON r.Year = s.Year
+  AND r.MonthDay = s.MonthDay
+  AND r.JyoCD = s.JyoCD
+  AND r.Kaiji = s.Kaiji
+  AND r.Nichiji = s.Nichiji
+  AND r.RaceNum = s.RaceNum
 ```
 
 ### よくある条件
 
-- **東京競馬場の芝1600m**: `idJyoCD = '05' AND TrackInfoKyori = 1600 AND JyokenInfoSyubetuCD = '11'`
+- **東京競馬場の芝1600m**: `JyoCD = '05' AND Kyori = 1600 AND TrackCD LIKE '1%'`
 - **G1レース**: `GradeCD = 'A'`
 - **1番人気**: `Ninki = 1`
-- **過去3年**: `idYear >= strftime('%Y', date('now', '-3 years'))`
+- **過去3年**: `Year >= strftime('%Y', date('now', '-3 years'))`
 
 ## LLMでの効果
 
@@ -138,13 +138,13 @@ LLM: どのカラムが競馬場を表すか不明...
 ```
 ユーザー: 「東京競馬場のG1レースを検索して」
 LLM: schema_descriptions を参照
-     - idJyoCD = '05'  (説明: 05=東京)
+     - JyoCD = '05'  (説明: 05=東京)
      - GradeCD = 'A'   (説明: A=G1)
      -> 正確なクエリ生成！
 
 SELECT *
-FROM NL_RA_RACE
-WHERE idJyoCD = '05' AND GradeCD = 'A'
+FROM NL_RA
+WHERE JyoCD = '05' AND GradeCD = 'A'
 ```
 
 ## 今後の拡張
@@ -173,7 +173,7 @@ WHERE idJyoCD = '05' AND GradeCD = 'A'
 3. できるだけ具体的な例を含める
 
 ```python
-"NL_RA_RACE": {
+"NL_RA": {
     "new_column": "説明（例を含めると良い、例：1600=1600m）",
 }
 ```

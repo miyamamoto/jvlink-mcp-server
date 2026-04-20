@@ -19,14 +19,16 @@ cd jrvltsql
 
 ### データベースファイル
 
-jrvltsqlで作成されたSQLiteデータベース：
+jrvltsqlはSQLiteとDuckDBの両方のデータベースを作成できます：
 
 ```
-C:/Users/mitsu/work/jrvltsql/data/keiba.db
+C:/Users/mitsu/work/jrvltsql/data/keiba.db      # SQLite
+C:/Users/mitsu/work/jrvltsql/data/keiba.duckdb  # DuckDB（分析用途に高速）
 ```
 
 **データベースの特徴:**
-- 形式: SQLite 3.x
+- SQLite形式: SQLite 3.x（標準・互換性重視）
+- DuckDB形式: 列指向ストレージ（集計・分析クエリに2〜10倍高速）
 - テーブル数: 約57テーブル（NL系38 + RT系19）
 - データサイズ: 約300MB〜（データ量により変動）
 - JV-Linkから取得したデータをjrvltsqlが変換・格納
@@ -155,8 +157,10 @@ ORDER BY se.Year, se.MonthDay
 
 | 変数名 | 説明 | 設定例 |
 |--------|------|--------|
-| `DB_TYPE` | データベースの種類 | `sqlite` |
-| `DB_PATH` | SQLiteデータベースファイルのパス | `C:/Users/mitsu/work/jrvltsql/data/keiba.db` |
+| `DB_TYPE` | データベースの種類 | `sqlite` または `duckdb` |
+| `DB_PATH` | データベースファイルのパス | `C:/Users/mitsu/work/jrvltsql/data/keiba.db` |
+
+DuckDBを使用する場合は `DB_TYPE=duckdb` と `DB_PATH` に `.duckdb` ファイルを指定してください。
 
 ### 設定例
 

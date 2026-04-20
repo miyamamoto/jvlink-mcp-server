@@ -7,3 +7,8 @@ collect_ignore = [
     "comprehensive_query_patterns.py",
     "test_query_patterns.py",
 ]
+
+# Unit tests need no real DB; set safe defaults so imports don't crash.
+import os
+os.environ.setdefault("DB_TYPE", "sqlite")
+os.environ.setdefault("DB_PATH", ":memory:")

@@ -49,6 +49,12 @@ from .updater import check_for_updates, perform_update, startup_update_check
 # FastMCPサーバーの初期化
 mcp = FastMCP("JVLink MCP Server")
 
+# 起動時にアップデートを確認（バックグラウンドでサイレントに）
+_update_notice = startup_update_check()
+if _update_notice:
+    import logging as _logging
+    _logging.getLogger(__name__).info(_update_notice)
+
 # データディレクトリのパス（パッケージルートからの相対パス）
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
@@ -330,8 +336,11 @@ def search_features(keyword: str) -> dict:
 # ============================================================================
 
 @mcp.tool()
-def generate_sql_from_natural_language(query_text: str) -> dict:
-    """自然言語からSQLクエリを動的生成
+def get_sql_generation_prompt(query_text: str) -> dict:
+    """自然言語クエリをSQLに変換するためのLLMプロンプトを生成
+
+    このツールはSQLを直接実行しません。LLMにSQLを生成させるためのプロンプトを返します。
+    生成されたSQLは keiba_data_search ツールで実行してください。
 
     Args:
         query_text: 自然言語のクエリ
@@ -339,7 +348,7 @@ def generate_sql_from_natural_language(query_text: str) -> dict:
             例: "ディープインパクト産駒の距離別成績を集計して"
 
     Returns:
-        生成されたSQLクエリと説明
+        LLM用プロンプトとスキーマ情報
     """
     # スキーマ情報を取得
     schema_info = get_schema_description()

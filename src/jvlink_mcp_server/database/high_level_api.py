@@ -48,7 +48,7 @@ GRADE_CODES = {
     'A': 'A', 'B': 'B', 'C': 'C',
     'リステッド': 'D', 'オープン特別': 'E',
     '3勝': 'F', '2勝': 'G', '1勝': 'H',
-    '未勝利': 'I', '新馬': 'J'
+    '未勝利': 'I', '新馬': 'J',
 }
 
 # ソース別テーブル名
@@ -502,8 +502,8 @@ def _horse_history_impl(
 
     df['venue'] = df['venue_code'].map(venue_map)
     df = df.drop(columns=['venue_code'])
-    df['finish'] = df['finish'].astype(str).str.lstrip('0').replace('', '0').astype(int)
-    df['popularity'] = df['popularity'].astype(str).str.lstrip('0').replace('', '0').astype(int)
+    df['finish'] = pd.to_numeric(df['finish'], errors='coerce').fillna(0).astype(int)
+    df['popularity'] = pd.to_numeric(df['popularity'], errors='coerce').fillna(0).astype(int)
     df.attrs['query'] = query
     return df
 
