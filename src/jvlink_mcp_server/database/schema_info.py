@@ -27,6 +27,15 @@ JVLINK_TABLES = {
             "TrackCD": "トラックコード（2桁: 1桁目=種別[1=芝,2=ダート], 2桁目=回り）",
             "SibaBabaCD": "芝馬場状態コード (1=良, 2=稍重, 3=重, 4=不良)",
             "DirtBabaCD": "ダート馬場状態コード",
+            "Corner2": "2コーナー区分（コーナー通過順位）",
+            "Syukaisu2": "2コーナー周回数 (INTEGER)",
+            "TsukaJyuni2": "2コーナー通過順位（馬番を着順に並べた文字列）",
+            "Corner3": "3コーナー区分",
+            "Syukaisu3": "3コーナー周回数 (INTEGER)",
+            "TsukaJyuni3": "3コーナー通過順位",
+            "Corner4": "4コーナー区分",
+            "Syukaisu4": "4コーナー周回数 (INTEGER)",
+            "TsukaJyuni4": "4コーナー通過順位",
         },
     },
     "NL_SE": {
@@ -58,7 +67,23 @@ JVLINK_TABLES = {
             "Futan": "斤量 (REAL)",
         },
     },
-    "NL_HR": {"description": "払戻テーブル（確定）", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"], "key_columns": {}},
+    "NL_HR": {
+        "description": "払戻テーブル（確定）。配当は配列構造で全件格納（複勝最大5件・ワイド最大7件・3連単最大6件等）",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum"],
+        "key_columns": {
+            "TanUmaban": "単勝1着の馬番、TanUmaban2/3=同着分",
+            "TanPay": "単勝払戻金 (BIGINT, 円)、TanPay2/3=同着分",
+            "FukuUmaban": "複勝1頭目の馬番、FukuUmaban2〜FukuUmaban5=2〜5頭目",
+            "FukuPay": "複勝払戻金 (BIGINT)、FukuPay2〜FukuPay5=2〜5頭目",
+            "WakuKumi": "枠連1組目の組番、WakuKumi2/3=同着分",
+            "UmarenKumi": "馬連1組目の組番、UmarenKumi2/3=同着分",
+            "WideKumi": "ワイド1組目の組番、WideKumi2〜WideKumi7=2〜7組目",
+            "WidePay": "ワイド払戻金、WidePay2〜WidePay7=2〜7組目",
+            "UmatanKumi": "馬単1組目の組番、UmatanKumi2〜UmatanKumi6=2〜6組目",
+            "SanrenfukuKumi": "3連複1組目の組番、SanrenfukuKumi2/3=同着分",
+            "SanrentanKumi": "3連単1組目の組番、SanrentanKumi2〜SanrentanKumi6=2〜6組目",
+        },
+    },
     # 馬・騎手・調教師マスタ
     "NL_UM": {
         "description": "馬マスタ（JRA中央競馬のみ。地方競馬はJOIN不可）",
@@ -88,11 +113,27 @@ JVLINK_TABLES = {
             "KyakusituKeiko": "脚質傾向",
         },
     },
-    "NL_HC": {"description": "調教師本賞金・付加賞金テーブル", "primary_keys": ["ChokyosiCode", "SetYear"], "key_columns": {}},
+    "NL_HC": {
+        "description": "坂路調教テーブル（HANRO） - トレセン坂路コースの調教ハロンタイム・ラップタイム",
+        "primary_keys": ["TresenKubun", "ChokyoDate", "ChokyoTime", "KettoNum"],
+        "key_columns": {
+            "TresenKubun": "トレセン区分 (TEXT, 1=美浦, 2=栗東)",
+            "ChokyoDate": "調教年月日 (TEXT, YYYYMMDD)",
+            "ChokyoTime": "調教時刻 (TEXT, HHMM)",
+            "KettoNum": "血統登録番号",
+            "HaronTime4": "4ハロン総合タイム (REAL, 秒)",
+            "HaronTime3": "3ハロン総合タイム (REAL, 秒)",
+            "HaronTime2": "2ハロン総合タイム (REAL, 秒)",
+            "LapTime4": "ラップタイム4F区間 (REAL, 秒)",
+            "LapTime3": "ラップタイム3F区間 (REAL, 秒)",
+            "LapTime2": "ラップタイム2F区間 (REAL, 秒)",
+            "LapTime1": "ラップタイム1F区間 (REAL, 秒)",
+        },
+    },
     "NL_HS": {"description": "馬市場取引価格テーブル", "primary_keys": ["KettoNum"], "key_columns": {"Price": "価格"}},
     "NL_HY": {"description": "抹消馬名テーブル", "primary_keys": [], "key_columns": {"Bamei": "馬名"}},
     # オッズ・票数テーブル
-    "NL_O1": {"description": "単勝複勝オッズ（確定）", "primary_keys": [], "key_columns": {}},
+    "NL_O1": {"description": "単勝複勝オッズ（確定）", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban", "Kumi"], "key_columns": {}},
     "NL_O2": {"description": "馬連オッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O3": {"description": "ワイドオッズ（確定）", "primary_keys": [], "key_columns": {}},
     "NL_O4": {"description": "馬単オッズ（確定）", "primary_keys": [], "key_columns": {}},
@@ -116,7 +157,16 @@ JVLINK_TABLES = {
     "NL_RC": {"description": "レコードタイムテーブル", "primary_keys": [], "key_columns": {"RecTime": "レコードタイム"}},
     "NL_YS": {"description": "開催スケジュールテーブル", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji"], "key_columns": {}},
     "NL_WF": {"description": "WIN5情報テーブル", "primary_keys": ["Year", "MonthDay"], "key_columns": {}},
-    "NL_AV": {"description": "セリ市情報テーブル", "primary_keys": ["KettoNum"], "key_columns": {"Price": "価格"}},
+    "NL_AV": {
+        "description": "出走取消・競走除外馬情報テーブル - 出走取消／競走除外となった馬の発表情報（旧セリ市情報ではない）",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"],
+        "key_columns": {
+            "HappyoTime": "発表時刻 (TEXT)",
+            "Umaban": "馬番 (INTEGER)",
+            "Bamei": "馬名",
+            "JiyuKubun": "事由区分 (TEXT, 取消・除外の理由)",
+        },
+    },
 }
 
 # === 速報系テーブル (RT_) ===
@@ -130,6 +180,12 @@ REALTIME_TABLES = {
             "JyoCD": "競馬場コード (TEXT)",
             "Hondai": "レース名本題",
             "Kyori": "距離（INTEGER, メートル）",
+            "Corner2": "2コーナー区分（コーナー通過順位）",
+            "TsukaJyuni2": "2コーナー通過順位",
+            "Corner3": "3コーナー区分",
+            "TsukaJyuni3": "3コーナー通過順位",
+            "Corner4": "4コーナー区分",
+            "TsukaJyuni4": "4コーナー通過順位",
         },
     },
     "RT_SE": {
@@ -145,7 +201,7 @@ REALTIME_TABLES = {
         },
     },
     "RT_HR": {"description": "払戻テーブル（速報）", "primary_keys": [], "key_columns": {}},
-    "RT_O1": {"description": "単勝複勝オッズ（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_O1": {"description": "単勝複勝オッズ（速報）", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban", "Kumi"], "key_columns": {}},
     "RT_O2": {"description": "馬連オッズ（速報）", "primary_keys": [], "key_columns": {}},
     "RT_O3": {"description": "ワイドオッズ（速報）", "primary_keys": [], "key_columns": {}},
     "RT_O4": {"description": "馬単オッズ（速報）", "primary_keys": [], "key_columns": {}},
@@ -154,7 +210,7 @@ REALTIME_TABLES = {
     "RT_H1": {"description": "単勝複勝票数（速報）", "primary_keys": [], "key_columns": {}},
     "RT_H6": {"description": "3連単票数（速報）", "primary_keys": [], "key_columns": {}},
     # 変更情報（速報）
-    "RT_AV": {"description": "セリ市情報（速報）", "primary_keys": [], "key_columns": {}},
+    "RT_AV": {"description": "出走取消・競走除外馬情報（速報）", "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban"], "key_columns": {"HappyoTime": "発表時刻", "Umaban": "馬番", "Bamei": "馬名", "JiyuKubun": "事由区分"}},
     "RT_CC": {"description": "コース変更（速報）", "primary_keys": [], "key_columns": {}},
     "RT_DM": {"description": "デジタルメモ（速報）", "primary_keys": [], "key_columns": {}},
     "RT_JC": {"description": "騎手変更（速報）", "primary_keys": [], "key_columns": {}},
@@ -168,10 +224,11 @@ REALTIME_TABLES = {
 # === 時系列オッズテーブル (TS_) ===
 TIMESERIES_TABLES = {
     "TS_O1": {
-        "description": "時系列単勝複勝オッズ - オッズの時間推移を記録",
-        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "HassoTime", "Umaban"],
+        "description": "時系列単勝複勝オッズ - オッズの時間推移を記録。CollectedAt(取得時刻)で同一HassoTime内の複数取得を区別",
+        "primary_keys": ["Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum", "Umaban", "Kumi", "HassoTime"],
         "key_columns": {
             "HassoTime": "発走時刻",
+            "CollectedAt": "オッズ取得時刻 (TEXT) - 同一発走時刻内の取得タイミングを区別",
             "Umaban": "馬番 (INTEGER)",
             "TanOdds": "単勝オッズ (REAL)",
             "TanNinki": "単勝人気 (INTEGER)",
@@ -181,11 +238,18 @@ TIMESERIES_TABLES = {
             "FukuVote": "複勝票数 (INTEGER)",
         },
     },
-    "TS_O2": {"description": "時系列馬連オッズ", "primary_keys": [], "key_columns": {}},
-    "TS_O3": {"description": "時系列ワイドオッズ", "primary_keys": [], "key_columns": {}},
-    "TS_O4": {"description": "時系列馬単オッズ", "primary_keys": [], "key_columns": {}},
-    "TS_O5": {"description": "時系列3連複オッズ", "primary_keys": [], "key_columns": {}},
-    "TS_O6": {"description": "時系列3連単オッズ", "primary_keys": [], "key_columns": {}},
+    "TS_O2": {"description": "時系列馬連オッズ", "primary_keys": [], "key_columns": {"CollectedAt": "オッズ取得時刻"}},
+    "TS_O3": {"description": "時系列ワイドオッズ", "primary_keys": [], "key_columns": {"CollectedAt": "オッズ取得時刻"}},
+    "TS_O4": {"description": "時系列馬単オッズ", "primary_keys": [], "key_columns": {"CollectedAt": "オッズ取得時刻"}},
+    "TS_O5": {"description": "時系列3連複オッズ", "primary_keys": [], "key_columns": {"CollectedAt": "オッズ取得時刻"}},
+    "TS_O6": {"description": "時系列3連単オッズ", "primary_keys": [], "key_columns": {"CollectedAt": "オッズ取得時刻"}},
+    # 速報時系列オッズ（0B30-0B36等の当週速報系オッズを別物理テーブルで保持）
+    "TS_SOKUHO_O1": {"description": "速報時系列単勝複勝オッズ（当週速報系オッズ）。SourceSpecで取得元を区別", "primary_keys": [], "key_columns": {"SourceSpec": "取得元レコード種別", "CollectedAt": "オッズ取得時刻"}},
+    "TS_SOKUHO_O2": {"description": "速報時系列馬連オッズ", "primary_keys": [], "key_columns": {}},
+    "TS_SOKUHO_O3": {"description": "速報時系列ワイドオッズ", "primary_keys": [], "key_columns": {}},
+    "TS_SOKUHO_O4": {"description": "速報時系列馬単オッズ", "primary_keys": [], "key_columns": {}},
+    "TS_SOKUHO_O5": {"description": "速報時系列3連複オッズ", "primary_keys": [], "key_columns": {}},
+    "TS_SOKUHO_O6": {"description": "速報時系列3連単オッズ", "primary_keys": [], "key_columns": {}},
 }
 
 # === NAR（地方競馬）テーブル ===
@@ -289,6 +353,10 @@ def get_schema_description():
             "JRA馬マスタ: NL_UM、NAR馬マスタ: NL_UM_NAR（別テーブル）",
             "速報系(RT_)は当日のみ、過去データはNL_を使用",
             "JRA+NAR横断分析: UNION ALLでNL_SE + NL_SE_NARを結合",
+            "NL_HCは坂路調教(HANRO)タイム、NL_AV/RT_AVは出走取消・競走除外馬情報（いずれもjrvltsql v1.6で意味が変更）",
+            "NL_HR(払戻)は配列構造: 複勝はFukuUmaban〜FukuUmaban5、ワイドはWideKumi〜WideKumi7 など全配当を格納",
+            "NL_RA/RT_RAはコーナー通過順位(Corner2-4, TsukaJyuni2-4)を保持",
+            "TS_O*はCollectedAt(取得時刻)を含む。速報系オッズはTS_SOKUHO_O*に分離",
         ],
     }
 

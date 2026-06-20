@@ -151,10 +151,10 @@ WHERE JyoCD = '05' AND GradeCD = 'A'
 
 ### 追加予定の説明
 
-- [ ] NL_HC_HANRO (斤量)
+- [x] NL_HC (坂路調教/HANRO タイム) — jrvltsql v1.6 で実装・説明追加
 - [ ] NL_WC_WOOD (調教)
 - [ ] NL_JG_JOGAIBA (馬場情報)
-- [ ] NL_HR_PAY (払戻金)
+- [x] NL_HR (払戻金・配当配列) — 複勝5件/ワイド7件等の全配当に説明追加
 - [ ] NL_BN_BANUSI (馬主)
 
 ### 拡張機能
