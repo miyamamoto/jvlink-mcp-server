@@ -48,6 +48,21 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     if col == "idUmaban" or col == "Umaban":
         return "馬番"
 
+    # === NL_HR/RT_HR: 払戻配当配列（先頭は番号なし＝1件目、以降は2始まりの実番号） ===
+    if table_name.replace("_NAR", "") in ("NL_HR", "RT_HR"):
+        hr_bet = {
+            "Tan": "単勝", "Fuku": "複勝", "Waku": "枠連", "Umaren": "馬連",
+            "Wide": "ワイド", "Umatan": "馬単", "Sanrenfuku": "3連複",
+            "Sanrentan": "3連単",
+        }
+        hr_field = {"Umaban": "馬番", "Kumi": "組番", "Pay": "払戻金（円）", "Ninki": "人気順"}
+        hr_match = re.match(
+            r'(Tan|Fuku|Waku|Umaren|Wide|Umatan|Sanrenfuku|Sanrentan)'
+            r'(Umaban|Kumi|Pay|Ninki)(\d*)$', col)
+        if hr_match and hr_match.group(1) in hr_bet:
+            idx = int(hr_match.group(3)) if hr_match.group(3) else 1
+            return f"{hr_bet[hr_match.group(1)]}{idx}件目の{hr_field[hr_match.group(2)]}"
+
     # === レース情報（RaceInfo*） ===
     if col.startswith("RaceInfo"):
         if "Hondai" in col:
@@ -922,6 +937,12 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     # === その他の共通カラム ===
     if col == "HappyoTime":
         return "発表時刻（HHmm形式）"
+    if col == "JiyuKubun":
+        return "事由区分（出走取消・競走除外の理由）"
+    if col == "CollectedAt":
+        return "オッズ取得時刻（同一発走時刻内の取得タイミングを区別）"
+    if col == "SourceSpec":
+        return "取得元レコード種別（速報時系列オッズの取得元を区別）"
     if col == "HenkoID":
         return "変更ID"
     if col == "SetYear":
@@ -1413,6 +1434,17 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     if sanrent_ninki:
         num = int(sanrent_ninki.group(1)) + 1
         return f"3連単{num}番組の人気順"
+
+    # === NL_RA/RT_RA: コーナー通過順位（Corner2-4, Syukaisu2-4, TsukaJyuni2-4） ===
+    corner_pos = re.match(r'Corner(\d+)$', col)
+    if corner_pos:
+        return f"{corner_pos.group(1)}コーナー区分（コーナー通過順位情報）"
+    syukaisu = re.match(r'Syukaisu(\d+)$', col)
+    if syukaisu:
+        return f"{syukaisu.group(1)}コーナー周回数"
+    tsuka_jyuni = re.match(r'TsukaJyuni(\d+)$', col)
+    if tsuka_jyuni:
+        return f"{tsuka_jyuni.group(1)}コーナー通過順位（先頭からの馬番を並べた文字列）"
 
     # === NL_RA: レース条件コード（JyokenCD1~5） ===
     jyoken_match = re.match(r'JyokenCD(\d+)', col)
