@@ -60,3 +60,6 @@ htmlcov/
 
 # MCP Bundle files (built artifacts)
 *.mcpb
+
+# 更新チェックの実行時キャッシュ
+.update_check.json
