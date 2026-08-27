@@ -218,3 +218,8 @@ change the development collector or either PostgreSQL database.
   fail; the same token in a result literal, alias, or comment remains valid.
 - Focused post-repair result: `39 passed`. Final full suites, commit, CI,
   review/thread closure, and release gate remain pending.
+- Before accepting that repair, a bounded self-review exercised PostgreSQL's
+  legal nested block comments. The first implementation accepted a physical
+  NAR table after `/* outer /* nested */ still outer */`; the added regression
+  failed red. Block-comment masking now tracks nesting depth, and the focused
+  JRA-only/schema/connection selection remains green (`39 passed`).

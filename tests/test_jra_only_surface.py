@@ -9,6 +9,7 @@ import pytest
 from jvlink_mcp_server import server
 from jvlink_mcp_server.database import high_level_api, query_templates, schema_info
 from jvlink_mcp_server.database.connection import DatabaseConnection
+from jvlink_mcp_server.database.utils import reject_unsupported_nar_table_reference
 
 
 def test_nar_support_is_not_exposed() -> None:
@@ -69,3 +70,8 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
     )
     assert literal_validation["can_execute"] is True
     assert literal_validation["unsupported_provider_table"] is False
+
+    with pytest.raises(ValueError, match="NAR tables are not supported"):
+        reject_unsupported_nar_table_reference(
+            "SELECT COUNT(*) FROM /* outer /* nested */ still outer */ NL_RA_NAR"
+        )

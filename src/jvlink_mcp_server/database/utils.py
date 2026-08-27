@@ -49,10 +49,19 @@ def _mask_sql_literals_and_comments(query: str) -> str:
             index = end
             continue
         if query.startswith("/*", index):
-            end = query.find("*/", index + 2)
-            end = len(query) if end < 0 else end + 2
-            masked[index:end] = " " * (end - index)
-            index = end
+            start = index
+            depth = 1
+            index += 2
+            while index < len(query) and depth:
+                if query.startswith("/*", index):
+                    depth += 1
+                    index += 2
+                elif query.startswith("*/", index):
+                    depth -= 1
+                    index += 2
+                else:
+                    index += 1
+            masked[start:index] = " " * (index - start)
             continue
         if query[index] == "'":
             start = index
