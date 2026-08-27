@@ -124,10 +124,7 @@ if ($DbPath) {
     Write-Host "    1. JRA-VAN DataLab 契約（中央競馬データ）"
     Write-Host "       → https://jra-van.jp/dlb/"
     Write-Host ""
-    Write-Host "    2. 地方競馬DATA 契約（地方競馬データ・任意）"
-    Write-Host "       → https://www.keiba-data.com/"
-    Write-Host ""
-    Write-Host "    3. jrvltsql でデータベースを構築"
+    Write-Host "    2. jrvltsql でJRAデータベースを構築"
     Write-Host "       → https://github.com/miyamamoto/jrvltsql"
     Write-Host ""
 

@@ -159,10 +159,7 @@ else
     echo "    1. JRA-VAN DataLab 契約（中央競馬データ）"
     echo "       → https://jra-van.jp/dlb/"
     echo ""
-    echo "    2. 地方競馬DATA 契約（地方競馬データ・任意）"
-    echo "       → https://www.keiba-data.com/"
-    echo ""
-    echo "    3. jrvltsql でデータベースを構築"
+    echo "    2. jrvltsql でJRAデータベースを構築"
     echo "       → https://github.com/miyamamoto/jrvltsql"
     echo ""
 

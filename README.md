@@ -69,8 +69,6 @@ irm https://raw.githubusercontent.com/miyamamoto/jvlink-mcp-server/master/instal
 [jrvltsql](https://github.com/miyamamoto/jrvltsql) を使ってJRA-VANからデータを取得し、`keiba.db`を作成します。
 
 > **JRA-VAN DataLab** の契約が必要です → [https://jra-van.jp/dlb/](https://jra-van.jp/dlb/)
->
-> 地方競馬データも必要な場合は **地方競馬DATA** → [https://www.keiba-data.com/](https://www.keiba-data.com/)
 
 ### Step 2: リポジトリをクローン
 

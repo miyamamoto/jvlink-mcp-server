@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -30,6 +31,10 @@ def test_nar_support_is_not_exposed() -> None:
     assert not hasattr(high_level_api, "get_nar_favorite_performance")
     assert not hasattr(high_level_api, "get_nar_jockey_stats")
     assert not hasattr(high_level_api, "get_nar_horse_history")
+
+    for setup_surface in ("README.md", "install.sh", "install.ps1"):
+        contents = Path(setup_surface).read_text(encoding="utf-8")
+        assert "地方競馬DATA" not in contents, setup_surface
 
 
 def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) -> None:
@@ -77,6 +82,12 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
         )
     with pytest.raises(ValueError, match="NAR tables are not supported"):
         reject_unsupported_nar_table_reference("TABLE NL_RA_NAR")
+    with pytest.raises(ValueError, match="NAR tables are not supported"):
+        reject_unsupported_nar_table_reference(
+            "SELECT * FROM ONLY (NL_RA_NAR)"
+        )
+
+    reject_unsupported_nar_table_reference("SELECT * FROM ONLY (NL_RA)")
 
     table_validation = server.validate_sql_query("TABLE NL_RA_NAR")
     assert table_validation["unsupported_provider_table"] is True

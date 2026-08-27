@@ -102,6 +102,7 @@ def _referenced_tables(query: str):
     tokens = _SQL_TOKEN_RE.findall(_mask_sql_literals_and_comments(query))
     in_from_clause = False
     expect_table = False
+    only_modifier = False
     index = 0
     while index < len(tokens):
         token = tokens[index]
@@ -109,18 +110,24 @@ def _referenced_tables(query: str):
         if upper in {"FROM", "JOIN", "TABLE"}:
             in_from_clause = True
             expect_table = True
+            only_modifier = False
             index += 1
             continue
         if upper in _FROM_CLAUSE_END:
             in_from_clause = False
             expect_table = False
+            only_modifier = False
             index += 1
             continue
         if expect_table:
             if upper == "ONLY":
+                only_modifier = True
                 index += 1
                 continue
             if token == "(":
+                if only_modifier:
+                    index += 1
+                    continue
                 expect_table = False
                 index += 1
                 continue
@@ -135,8 +142,10 @@ def _referenced_tables(query: str):
                     index += 2
                 yield _identifier_value(table_token)
                 expect_table = False
+                only_modifier = False
         elif in_from_clause and token == ",":
             expect_table = True
+            only_modifier = False
         index += 1
 
 

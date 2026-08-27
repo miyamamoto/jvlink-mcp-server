@@ -1,12 +1,16 @@
 """Public contracts that must match the stable jrvltsql 2.0.0 schema."""
 
-from pathlib import Path
-import sqlite3
 import json
+import sqlite3
 import tomllib
+from pathlib import Path
 
 import pytest
 
+from jvlink_mcp_server.database.jrvltsql_2_contract import (
+    JRVLTSQL_VERSION,
+    validate_sqlite_schema,
+)
 from jvlink_mcp_server.database.schema_descriptions import (
     TABLE_DESCRIPTIONS,
     get_column_description,
@@ -17,10 +21,6 @@ from jvlink_mcp_server.database.schema_info import (
     JVLINK_TABLES,
     REALTIME_TABLES,
     TIMESERIES_TABLES,
-)
-from jvlink_mcp_server.database.jrvltsql_2_contract import (
-    JRVLTSQL_VERSION,
-    validate_sqlite_schema,
 )
 
 
@@ -57,6 +57,17 @@ def test_schema_descriptions_accept_postgresql_identifier_case():
     assert get_column_description("nl_se", "kakuteijyuni") == get_column_description(
         "NL_SE", "KakuteiJyuni"
     )
+    for table_name, column_name in (
+        ("NL_RA", "RecordSpec"),
+        ("NL_RA", "LapTime0"),
+        ("NL_RA", "CornerInfo0Corner"),
+        ("NL_HR", "TanUmaban2"),
+    ):
+        canonical = get_column_description(table_name, column_name)
+        assert not canonical.startswith("（説明未登録:")
+        assert get_column_description(
+            table_name.lower(), column_name.lower()
+        ) == canonical
 
 
 def test_parent_sync_uses_pull_request_not_protected_branch_push():

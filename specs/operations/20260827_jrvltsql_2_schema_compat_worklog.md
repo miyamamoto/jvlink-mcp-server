@@ -234,3 +234,35 @@ change the development collector or either PostgreSQL database.
   and the exposed pedigree fields. The official v2.0.0-generated SQLite DB
   remains green with the expanded template contract; focused schema/JRA-only/
   template tests report `41 passed`.
+
+## Final NAR-removal review closure — 2026-08-27
+
+- The exact `b02dcb1349980ad054ce2010c77b1c44d82998e7` review found three
+  remaining boundaries: PostgreSQL `FROM ONLY (table)` could hide a physical
+  NAR table from the guard, PostgreSQL-folded lowercase column names lost
+  auto-generated descriptions, and the setup README/installers still advised
+  users to subscribe to the removed NAR provider.
+- One compact regression update was run before production changes and failed
+  in all three classes (`3 failed, 24 passed`): `ONLY (NL_RA_NAR)` did not
+  raise, lowercase `recordspec` returned `説明未登録`, and `README.md` still
+  contained `地方競馬DATA`. The paired JRA `ONLY (NL_RA)` and canonical
+  description cases remained in the same test boundary.
+- The batched repair preserves the table expectation through PostgreSQL's
+  parenthesized `ONLY` modifier, makes every auto-description matching
+  primitive case-insensitive, and removes NAR subscription guidance from all
+  active setup surfaces. Focused post-repair result: `27 passed`.
+- Against the SQLite database freshly generated from the official stable
+  `jrvltsql v2.0.0` wheel, all 80 tables and all 2,317 columns with an existing
+  generated description produced identical descriptions from canonical and
+  PostgreSQL-lowercase names (`mismatch_count=0`).
+- A read-only actual PostgreSQL probe accepted
+  `SELECT * FROM ONLY (NL_RA) LIMIT 1`, observed 122 `NL_RA` columns, and
+  rejected `ONLY (NL_RA_NAR)` before database execution. The first probe used
+  loopback while the database was bound to its configured LAN address and was
+  discarded after connection refusal; it performed no database operation.
+- Full Python 3.11.13 and isolated Python 3.12.11 suites each passed with
+  `188 passed, 8 skipped`; the workflow-equivalent Ruff selection and
+  `git diff --check` also pass. A fresh wheel and sdist both built as `0.7.0`
+  and their archive structure was inspected successfully. Final commit/push,
+  review-thread closure, CI, merge, and the `v0.7.0` release gate remain
+  pending.
