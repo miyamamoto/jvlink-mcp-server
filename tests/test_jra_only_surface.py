@@ -10,7 +10,10 @@ import pytest
 from jvlink_mcp_server import server
 from jvlink_mcp_server.database import high_level_api, query_templates, schema_info
 from jvlink_mcp_server.database.connection import DatabaseConnection
-from jvlink_mcp_server.database.utils import reject_unsupported_nar_table_reference
+from jvlink_mcp_server.database.utils import (
+    is_unsupported_nar_table_name,
+    reject_unsupported_nar_table_reference,
+)
 
 
 def test_nar_support_is_not_exposed() -> None:
@@ -112,3 +115,37 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
 
     table_validation = server.validate_sql_query("TABLE NL_RA_NAR")
     assert table_validation["unsupported_provider_table"] is True
+
+
+@pytest.mark.parametrize("db_type", ("sqlite", "duckdb"))
+def test_engine_bound_provider_isolation_blocks_indirect_nar_reads(
+    tmp_path, db_type
+) -> None:
+    assert is_unsupported_nar_table_name("memory.main.NL_RA_NAR")
+    database_path = tmp_path / f"mixed-provider.{db_type}"
+    if db_type == "sqlite":
+        with sqlite3.connect(database_path) as connection:
+            connection.execute("CREATE TABLE NL_RA (Year INTEGER)")
+            connection.execute("CREATE TABLE NL_RA_NAR (Year INTEGER)")
+            connection.execute(
+                "CREATE VIEW JRA_LOOKING_VIEW AS SELECT * FROM NL_RA_NAR"
+            )
+        bypass_query = "SELECT * FROM JRA_LOOKING_VIEW"
+    else:
+        import duckdb
+
+        with duckdb.connect(str(database_path)) as connection:
+            connection.execute("CREATE TABLE NL_RA (Year INTEGER)")
+            connection.execute("CREATE TABLE NL_RA_NAR (Year INTEGER)")
+        bypass_query = "SELECT * FROM query_table('NL_RA_NAR')"
+
+    with (
+        patch.dict(
+            os.environ,
+            {"DB_TYPE": db_type, "DB_PATH": str(database_path)},
+            clear=False,
+        ),
+        DatabaseConnection() as database,
+        pytest.raises(ValueError, match="NAR tables are not supported"),
+    ):
+        database.execute_safe_query(bypass_query)

@@ -62,6 +62,12 @@ def validate_identifier(name: str, kind: str = "identifier") -> str:
     return name
 
 
+def is_unsupported_nar_table_name(name: str) -> bool:
+    """Return whether an engine-resolved relation belongs to the NAR provider."""
+    relation_name = name.rsplit(".", 1)[-1].strip('"`[]')
+    return _NAR_TABLE_NAME_RE.fullmatch(relation_name) is not None
+
+
 def _mask_sql_literals_and_comments(query: str) -> str:
     """Mask literal/comment contents while retaining SQL identifier positions."""
     masked = list(query)
@@ -264,6 +270,6 @@ def reject_unsupported_nar_table_reference(query: str) -> None:
     ):
         raise ValueError("Server-side dynamic SQL functions are not permitted.")
     if any(
-        _NAR_TABLE_NAME_RE.fullmatch(table) for table in _referenced_tables(query)
+        is_unsupported_nar_table_name(table) for table in _referenced_tables(query)
     ):
         raise ValueError("NAR tables are not supported by JVLink MCP Server.")

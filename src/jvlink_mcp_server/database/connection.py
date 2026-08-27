@@ -1,5 +1,6 @@
 """Database connection manager for JVLink databases"""
 
+import json
 import logging
 import os
 import re
@@ -8,12 +9,28 @@ import warnings
 import pandas as pd
 
 from .jrvltsql_2_contract import JRVLTSQL_2_PRIMARY_KEYS
-from .utils import reject_unsupported_nar_table_reference, validate_identifier
+from .utils import (
+    is_unsupported_nar_table_name,
+    reject_unsupported_nar_table_reference,
+    validate_identifier,
+)
 
 logger = logging.getLogger(__name__)
 
 # Suppress pandas DuckDB connection warning
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy')
+
+
+def _resolved_relation_names(plan, relation_keys: set[str]):
+    """Yield physical relation names from an engine-produced JSON plan."""
+    if isinstance(plan, dict):
+        for key, value in plan.items():
+            if key in relation_keys and isinstance(value, str):
+                yield value
+            yield from _resolved_relation_names(value, relation_keys)
+    elif isinstance(plan, list):
+        for value in plan:
+            yield from _resolved_relation_names(value, relation_keys)
 
 
 def _adapt_qmark_parameters(query: str) -> str:
@@ -95,6 +112,17 @@ class DatabaseConnection:
         if not self.db_path:
             raise ValueError("DB_PATH environment variable not set for SQLite")
         self.connection = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
+
+        def authorize(action, first_arg, _second_arg, _database, _trigger):
+            if (
+                action == sqlite3.SQLITE_READ
+                and isinstance(first_arg, str)
+                and is_unsupported_nar_table_name(first_arg)
+            ):
+                return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
+
+        self.connection.set_authorizer(authorize)
         return self.connection
 
     def _connect_duckdb(self):
@@ -194,7 +222,59 @@ class DatabaseConnection:
             if re.search(r'\b' + keyword + r'\b', query_upper):
                 raise ValueError(f"Dangerous keyword '{keyword}' detected in query. Only SELECT queries are allowed.")
 
+        self._assert_engine_provider_isolation(query, params)
         return self.execute_query(query, params=params)
+
+    def _assert_engine_provider_isolation(
+        self, query: str, params: Optional[tuple]
+    ) -> None:
+        """Ask the selected engine which physical relations the query binds."""
+        connection = self.connect()
+        relation_names = []
+
+        if self.db_type == "sqlite":
+            import sqlite3
+
+            try:
+                connection.execute(f"EXPLAIN QUERY PLAN {query}", params or ())
+            except sqlite3.DatabaseError as exc:
+                if "prohibited" in str(exc) or "not authorized" in str(exc):
+                    raise ValueError(
+                        "NAR tables are not supported by JVLink MCP Server."
+                    ) from None
+                raise
+            return
+
+        if self.db_type == "duckdb":
+            rows = connection.execute(
+                f"EXPLAIN (FORMAT JSON) {query}", params or ()
+            ).fetchall()
+            for row in rows:
+                if len(row) > 1 and isinstance(row[1], str):
+                    plan = json.loads(row[1])
+                    relation_names.extend(
+                        _resolved_relation_names(plan, {"Table"})
+                    )
+
+        elif self.db_type == "postgresql":
+            explain_query = query
+            if params and "?" in explain_query:
+                explain_query = _adapt_qmark_parameters(explain_query)
+            cursor = connection.cursor()
+            try:
+                if params:
+                    cursor.execute(f"EXPLAIN (FORMAT JSON) {explain_query}", params)
+                else:
+                    cursor.execute(f"EXPLAIN (FORMAT JSON) {explain_query}")
+                plan = cursor.fetchone()[0]
+            finally:
+                cursor.close()
+            relation_names.extend(
+                _resolved_relation_names(plan, {"Relation Name"})
+            )
+
+        if any(is_unsupported_nar_table_name(name) for name in relation_names):
+            raise ValueError("NAR tables are not supported by JVLink MCP Server.")
 
     def get_tables(self) -> list[str]:
         """データベース内のテーブル一覧を取得"""

@@ -303,3 +303,30 @@ change the development collector or either PostgreSQL database.
   `190 passed, 8 skipped`; the workflow Ruff selection and `git diff --check`
   pass. Commit/push, five thread responses, unresolved-thread and CI gates,
   merge, and release remain pending.
+
+## Engine-bound provider isolation — 2026-08-27
+
+- The exact `9153121654bd1ee4d0eb8f388d4566cc623af7e0` final review found one
+  remaining P1: supported engine syntax can resolve physical relations without
+  exposing their name to the SQL-text tokenizer. Concrete examples are DuckDB
+  `query_table('NL_RA_NAR')` and PostgreSQL `U&"nl_ra_nar"`.
+- The minimal engine-bound regression failed red on both supported local
+  backends (`2 failed`): SQLite allowed a JRA-looking view backed by
+  `NL_RA_NAR`, and DuckDB allowed `query_table()` to return the NAR table.
+- The repair no longer treats text scanning as the final provider boundary.
+  SQLite installs a read authorizer and compiles every safe query under that
+  policy. DuckDB and PostgreSQL bind the query with their native JSON EXPLAIN
+  planners, and only engine-resolved physical relation names are checked. This
+  preserves JRA-only CTE aliases and catches views/table functions/Unicode
+  identifier forms after actual engine resolution.
+- Focused post-repair result is `39 passed`. Actual PostgreSQL accepted an
+  ordinary parameterized JRA query and a JRA-only CTE alias, while the native
+  bound plan exposed and rejected the Unicode-delimited NAR relation; dynamic
+  NAR SQL remained rejected before database execution.
+- The first isolated Python 3.12 full run exposed a DuckDB-version boundary:
+  DuckDB 1.5.5 qualifies plan relations as `memory.main.NL_RA_NAR`, while 1.4.1
+  returns `NL_RA_NAR`. The qualified name was not rejected (`1 failed,
+  191 passed, 8 skipped`). A retained regression now canonicalizes the final
+  engine-resolved identifier segment. Final Python 3.11.13 and Python 3.12.11
+  suites each pass with `192 passed, 8 skipped` across DuckDB 1.4.1 and 1.5.5.
+- Commit/push, exact thread response, CI, merge, and release remain pending.
