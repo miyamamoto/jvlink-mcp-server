@@ -59,6 +59,78 @@
 
 ## Next safe action
 
-Commit and push this start record, open a draft PR, then inventory every
-runtime and public reference to the old schema before writing the minimal red
-tests.
+Freeze the aggregated candidate, commit and push it to PR #22, then run the
+repository's workflow-equivalent checks and one final exact-SHA review. Do not
+change the development collector or either PostgreSQL database.
+
+## Audit and red-first evidence — 2026-08-27
+
+- The exact upstream 2.0.0 DDL was re-read from tag target
+  `4d3a89b382bb0a0b788d68093bc16f0f8dd950f5`. Its executable `SCHEMAS`
+  registry contains 80 JRA tables and every table has a primary key. The MCP
+  static resource exposes only 70 JRA tables and many of their key definitions
+  are from an older generation.
+- A compact red-first run was made before production changes:
+  `pytest -q tests/test_additional_coverage.py::TestConnectionPostgreSQL
+  tests/test_jrvltsql_2_contract.py` -> `22 failed`.
+- The failures independently bind four grouped regressions:
+  1. qmark parameters reached pg8000 unchanged instead of `%s`;
+  2. PostgreSQL lower-case catalog names were not canonicalized and documented
+     upper-case names were rejected;
+  3. representative changed keys in both static schema surfaces disagreed
+     with 2.0.0;
+  4. the parent sync still pushed and tagged protected `master` directly,
+     did not install the detected jrvltsql release, and public feature examples
+     referenced retired logical table names.
+- This is a batched repair after collecting the related findings; no
+  production source was changed during the red run.
+
+## Aggregated implementation and validation — 2026-08-27
+
+- Added an executable 80-table JRA contract pinned to stable `jrvltsql 2.0.0`
+  (`4d3a89b382bb0a0b788d68093bc16f0f8dd950f5`) and applied it to both schema
+  resources. The generated upstream SQLite schema and MCP metadata now agree
+  on all table names and primary-key columns.
+- Fixed PostgreSQL catalog-name canonicalization and converted unquoted qmark
+  parameters to pg8000 `%s` markers. The connection remains read-only.
+- Replaced retired logical feature SQL/table identifiers with physical 2.0
+  identifiers; removed four ignored legacy executable query suites that were
+  not collected by pytest and failed against the current package.
+- Corrected package/install surfaces: version `0.7.0`, exact upstream sync
+  lock, packaged feature data, Python dependency bounds, installer guidance,
+  and protected-branch-safe parent release PR workflow.
+- Hardened the updater with installed-package version fallback, PEP 440
+  comparison, user-cache state, and a fail-closed installed-wheel manual
+  update response. Its new negative regressions were observed red before the
+  repair (unknown/invalid version and installed-wheel git-update paths).
+
+### JRA-only scope correction
+
+- A read-only examination of the existing NAR surface showed that it had been
+  inferred from JRA table names and did not match the separate provider's
+  physical schema. The user then confirmed that this MCP is not intended to
+  support NAR.
+- Added a single public-surface regression first. Before removal it failed with
+  `{'nar_favorite_performance', 'nar_horse_history', 'nar_jockey_stats'}` still
+  registered.
+- Removed NAR MCP tools, resources, high-level APIs, schema entries, venue
+  constants, query templates, sample-data paths, live probes, and active
+  documentation. The wheel must expose JRA only; NAR remains the responsibility
+  of its separate provider stack.
+
+### Completed evidence on the uncommitted aggregate
+
+- Focused contract suite: `92 passed`.
+- Full default Python 3.11 suite: `182 passed, 8 skipped`.
+- Fresh isolated Python 3.12.11 suite: `182 passed, 8 skipped`.
+- Upstream-generated 80-table SQLite MCP stdio smoke: 22 tools, 6 resources,
+  zero NAR surface, `NL_SE` 103 columns, and successful favorite analysis.
+- Development PostgreSQL read-only MCP stdio smoke: 130 physical tables,
+  `NL_SE` 103 columns, successful positive-row favorite analysis, and zero NAR
+  tools. No database mutation or collector action was performed.
+- Fresh wheel/sdist build succeeded. Isolated Python 3.12 wheel install reports
+  metadata/package/updater version `0.7.0`, 22 tools, 80 static JRA tables, and
+  zero NAR runtime-source hits.
+- `git diff --check` passes. Repository-wide Ruff currently reports 65
+  pre-existing style findings and is not configured as the repository test
+  gate; no bulk formatting change is included in this iteration.

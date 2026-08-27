@@ -4,7 +4,7 @@ Covers:
 - connection.py: word-boundary keyword detection, PostgreSQL placeholders, semicolon checks
 - query_templates.py: all template render_template calls, sire_stats NL_UM JOIN, race_result quoted placeholders
 - high_level_api.py: get_sire_stats NL_UM JOIN, edge cases (empty results, None args)
-- sample_data_provider.py: get_data_snapshot (NAR tables), cache behavior
+- sample_data_provider.py: get_data_snapshot, cache behavior
 - server.py: QUERY_GENERATION_HINTS applied to correct table names
 - updater.py: git pull branch-name not hardcoded
 """
@@ -30,9 +30,29 @@ from jvlink_mcp_server.database.high_level_api import (
 from jvlink_mcp_server.database.sample_data_provider import (
     get_data_snapshot,
     get_sample_data,
+    get_column_value_examples,
     clear_cache,
     _sample_data_cache,
 )
+
+
+def test_column_examples_accept_postgresql_column_case():
+    db = Mock()
+    db.get_tables.return_value = ["NL_SE"]
+    db.get_table_schema.return_value = pd.DataFrame(
+        {"column_name": ["kakuteijyuni"], "column_type": ["integer"]}
+    )
+    db.execute_safe_query.return_value = pd.DataFrame(
+        {"kakuteijyuni": [1], "cnt": [100]}
+    )
+
+    result = get_column_value_examples(db, "NL_SE", "KakuteiJyuni")
+
+    assert "error" not in result
+    assert result["unique_values"] == [1]
+    query = db.execute_safe_query.call_args.args[0]
+    assert "kakuteijyuni" in query
+    assert "!= ''" not in query
 
 
 # ============================================================================
@@ -127,6 +147,37 @@ class TestConnectionWordBoundary:
 class TestConnectionPostgreSQL:
     """PostgreSQL placeholder format (%s) in get_table_schema."""
 
+    def test_execute_query_adapts_qmark_parameters(self):
+        """Public query helpers use qmark parameters; pg8000 requires %s."""
+        with patch.dict(os.environ, {"DB_TYPE": "postgresql"}):
+            db = DatabaseConnection()
+            db.connection = MagicMock()
+
+            with patch(
+                "jvlink_mcp_server.database.connection.pd.read_sql_query",
+                return_value=pd.DataFrame(),
+            ) as read_sql:
+                db.execute_query(
+                    "SELECT * FROM NL_SE WHERE Ninki = ? AND Year = ?",
+                    params=(1, 2026),
+                )
+
+            assert read_sql.call_args.args[0] == (
+                "SELECT * FROM NL_SE WHERE Ninki = %s AND Year = %s"
+            )
+            assert read_sql.call_args.kwargs["params"] == (1, 2026)
+
+    def test_postgresql_catalog_names_are_canonicalized(self):
+        """PostgreSQL folds unquoted jrvltsql table names to lower case."""
+        with patch.dict(os.environ, {"DB_TYPE": "postgresql"}):
+            db = DatabaseConnection()
+            db.connection = MagicMock()
+            db.execute_query = Mock(
+                return_value=pd.DataFrame({"tablename": ["nl_ra", "nl_se"]})
+            )
+
+            assert db.get_tables() == ["NL_RA", "NL_SE"]
+
     def test_postgresql_schema_uses_percent_s(self):
         """get_table_schema for postgresql uses %s placeholder."""
         with patch.dict(os.environ, {"DB_TYPE": "postgresql"}):
@@ -135,8 +186,8 @@ class TestConnectionPostgreSQL:
             mock_conn = MagicMock()
             db.connection = mock_conn
 
-            # Mock get_tables to return our table
-            db.get_tables = Mock(return_value=["NL_SE"])
+            # Real PostgreSQL catalogs return lower-case unquoted identifiers.
+            db.get_tables = Mock(return_value=["nl_se"])
 
             schema_df = pd.DataFrame({
                 "column_name": ["Year", "MonthDay"],
@@ -152,7 +203,7 @@ class TestConnectionPostgreSQL:
             assert "%s" in query_arg
             # Check params include table name
             params_arg = db.execute_query.call_args[1].get("params") or db.execute_query.call_args[0][1]
-            assert "NL_SE" in params_arg
+            assert "nl_se" in params_arg
             # Check column renamed
             assert "column_type" in result.columns
 
@@ -177,9 +228,6 @@ class TestRenderAllTemplates:
         "grade_race_list": {},
         "horse_pedigree": {"horse_name": "テスト"},
         "sire_stats": {},
-        "nar_favorite_win_rate": {"ninki": 1},
-        "nar_jockey_stats": {},
-        "nar_venue_stats": {},
         "track_condition_stats": {"horse_name": "テスト"},
         "race_search": {"race_name": "ダービー"},
     }
@@ -223,14 +271,6 @@ class TestRenderAllTemplates:
     def test_jockey_stats_default_limit(self):
         sql, params = render_template("jockey_stats")
         assert 20 in params
-
-    def test_nar_favorite_win_rate_uses_nar_table(self):
-        sql, _ = render_template("nar_favorite_win_rate", ninki=1)
-        assert "NL_SE_NAR" in sql
-
-    def test_nar_jockey_stats_uses_nar_table(self):
-        sql, _ = render_template("nar_jockey_stats")
-        assert "NL_SE_NAR" in sql
 
     def test_track_condition_stats_joins_ra(self):
         sql, _ = render_template("track_condition_stats", horse_name="テスト")
@@ -362,7 +402,7 @@ class TestHighLevelApiEdgeCases:
 
 
 class TestGetDataSnapshot:
-    def test_includes_nar_tables(self):
+    def test_includes_core_jra_tables(self):
         mock_db = Mock()
         count_df = pd.DataFrame({"cnt": [100]})
         period_df = pd.DataFrame({"earliest": ["2020-0101"], "latest": ["2024-1231"]})
@@ -376,8 +416,6 @@ class TestGetDataSnapshot:
 
         result = get_data_snapshot(mock_db)
 
-        assert "NL_RA_NAR" in result["tables"]
-        assert "NL_SE_NAR" in result["tables"]
         assert "NL_RA" in result["tables"]
         assert "NL_SE" in result["tables"]
         assert "NL_UM" in result["tables"]

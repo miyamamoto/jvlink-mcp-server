@@ -19,17 +19,17 @@ cd jrvltsql
 
 ### データベースファイル
 
-jrvltsqlはSQLiteとDuckDBの両方のデータベースを作成できます：
+jrvltsql 2.0.0はSQLiteまたはPostgreSQLへ書き込みます：
 
 ```
 C:/Users/mitsu/work/jrvltsql/data/keiba.db      # SQLite
-C:/Users/mitsu/work/jrvltsql/data/keiba.duckdb  # DuckDB（分析用途に高速）
+# PostgreSQLはDB_HOST/DB_PORT/DB_NAME等で接続
 ```
 
 **データベースの特徴:**
 - SQLite形式: SQLite 3.x（標準・互換性重視）
-- DuckDB形式: 列指向ストレージ（集計・分析クエリに2〜10倍高速）
-- テーブル数: 約57テーブル（NL系38 + RT系19）
+- PostgreSQL: 複数利用者・継続収集向け
+- JRAスキーマ: 80テーブル（jrvltsql 2.0.0）
 - データサイズ: 約300MB〜（データ量により変動）
 - JV-Linkから取得したデータをjrvltsqlが変換・格納
 
@@ -49,9 +49,9 @@ C:/Users/mitsu/work/jrvltsql/data/keiba.duckdb  # DuckDB（分析用途に高速
 各馬のレース結果を格納
 
 **主要カラム:**
-- `Year`, `MonthDay`, `JyoCD`, `Kaiji`, `Nichiji`, `RaceNum`, `Umaban`: 複合主キー
+- `Year`, `MonthDay`, `JyoCD`, `Kaiji`, `Nichiji`, `RaceNum`, `Umaban`, `KettoNum`: 複合主キー
 - `KettoNum`: 血統登録番号（NL_UMとJOIN用）
-- `KakuteijyuniJyuni`: 確定順位
+- `KakuteiJyuni`: 確定順位
 - `Time`: 走破タイム
 - `Ninki`: 人気順
 - `Odds`: 単勝オッズ
@@ -96,7 +96,7 @@ C:/Users/mitsu/work/jrvltsql/data/keiba.duckdb  # DuckDB（分析用途に高速
 ```sql
 SELECT
     ra.Year, ra.MonthDay, ra.JyoCD, ra.RaceNum,
-    se.Umaban, se.KakuteijyuniJyuni, se.Time,
+    se.Umaban, se.KakuteiJyuni, se.Time,
     um.Bamei AS 馬名, um.SexCD AS 性別
 FROM NL_SE se
 INNER JOIN NL_RA ra
@@ -117,7 +117,7 @@ WHERE ra.Year = 2024
 SELECT
     se.Year, se.MonthDay, se.RaceNum, se.Umaban,
     ks.KisyuName AS 騎手名,
-    se.KakuteijyuniJyuni AS 着順
+    se.KakuteiJyuni AS 着順
 FROM NL_SE se
 LEFT JOIN NL_KS ks ON se.KisyuCode = ks.KisyuCode
 WHERE se.Year = 2024
@@ -129,7 +129,7 @@ WHERE se.Year = 2024
 SELECT
     se.Year, se.MonthDay, se.RaceNum,
     ra.Kyori AS 距離, ra.TrackCD AS トラック,
-    se.KakuteijyuniJyuni AS 着順,
+    se.KakuteiJyuni AS 着順,
     um.Bamei AS 馬名
 FROM NL_SE se
 INNER JOIN NL_UM um ON se.KettoNum = um.KettoNum
@@ -157,10 +157,11 @@ ORDER BY se.Year, se.MonthDay
 
 | 変数名 | 説明 | 設定例 |
 |--------|------|--------|
-| `DB_TYPE` | データベースの種類 | `sqlite` または `duckdb` |
+| `DB_TYPE` | データベースの種類 | `sqlite`、`postgresql`、または独自変換済み`duckdb` |
 | `DB_PATH` | データベースファイルのパス | `C:/Users/mitsu/work/jrvltsql/data/keiba.db` |
 
-DuckDBを使用する場合は `DB_TYPE=duckdb` と `DB_PATH` に `.duckdb` ファイルを指定してください。
+DuckDBを使用する場合は、jrvltsqlのSQLite/PostgreSQL出力から別途変換した
+`.duckdb` ファイルを `DB_PATH` に指定してください。
 
 ### 設定例
 
@@ -250,7 +251,7 @@ Claude Desktopを再起動して完了です。
 | テーブル | 説明 | 主キー |
 |---------|------|--------|
 | NL_RA | レース情報 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum |
-| NL_SE | 出馬表・結果 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum, Umaban |
+| NL_SE | 出馬表・結果 | Year, MonthDay, JyoCD, Kaiji, Nichiji, RaceNum, Umaban, KettoNum |
 | NL_UM | 馬マスタ | KettoNum |
 | NL_KS | 騎手マスタ | KisyuCode |
 | NL_CH | 調教師マスタ | ChokyosiCode |

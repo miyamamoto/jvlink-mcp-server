@@ -20,19 +20,6 @@ VENUE_NAME_TO_CODE = {
     "小倉": "10",
 }
 
-# NAR地方競馬場名→コードマッピング
-NAR_VENUE_NAME_TO_CODE = {
-    "門別": "30", "北見": "31", "岩見沢": "32", "帯広": "33", "旭川": "34",
-    "盛岡": "35", "水沢": "36", "上山": "37", "三条": "38", "足利": "39",
-    "宇都宮": "40", "高崎": "41", "浦和": "42", "船橋": "43", "大井": "44",
-    "川崎": "45", "金沢": "46", "笠松": "47", "名古屋": "48", "園田": "49",
-    "姫路": "50", "益田": "51", "福山": "52", "高知": "53", "佐賀": "54",
-    "荒尾": "55", "中津": "56", "札幌(地)": "57",
-}
-
-# 全競馬場コード（JRA + NAR）
-ALL_VENUE_NAME_TO_CODE = {**VENUE_NAME_TO_CODE, **NAR_VENUE_NAME_TO_CODE}
-
 # グレード名→コードマッピング
 GRADE_NAME_TO_CODE = {
     "G1": "A",
@@ -336,71 +323,6 @@ ORDER BY wins DESC, win_rate DESC
 LIMIT {limit}
 """,
     },
-    # === NAR（地方競馬）テンプレート ===
-    "nar_favorite_win_rate": {
-        "description": "NAR地方競馬の人気別勝率を計算",
-        "parameters": {
-            "ninki": {"type": "int", "description": "人気順位（1-18）", "required": True},
-            "venue": {"type": "str", "description": "地方競馬場名（大井、船橋、川崎、浦和、名古屋、園田等）", "required": False},
-            "year_from": {"type": "str", "description": "集計開始年（YYYY形式）", "required": False},
-        },
-        "sql": """
-SELECT
-    COUNT(*) as total_races,
-    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
-FROM NL_SE_NAR
-WHERE Ninki = {ninki}
-  {venue_condition}
-  {year_condition}
-  AND KakuteiJyuni IS NOT NULL
-  AND KakuteiJyuni > 0
-""",
-    },
-    "nar_jockey_stats": {
-        "description": "NAR地方競馬の騎手成績を集計",
-        "parameters": {
-            "jockey_name": {"type": "str", "description": "騎手名（部分一致可）", "required": False},
-            "year": {"type": "str", "description": "対象年（YYYY形式）", "required": False},
-            "limit": {"type": "int", "description": "表示件数", "required": False, "default": 20},
-        },
-        "sql": """
-SELECT
-    KisyuRyakusyo as jockey_name,
-    COUNT(*) as total_rides,
-    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-    SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) as top3,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
-FROM NL_SE_NAR
-WHERE KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0
-  {jockey_condition}
-  {year_condition}
-GROUP BY KisyuRyakusyo
-ORDER BY wins DESC, win_rate DESC
-LIMIT {limit}
-""",
-    },
-    "nar_venue_stats": {
-        "description": "NAR地方競馬場別の1番人気成績を集計",
-        "parameters": {
-            "year_from": {"type": "str", "description": "集計開始年", "required": False},
-        },
-        "sql": """
-SELECT
-    JyoCD as venue_code,
-    COUNT(*) as total_races,
-    SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-    ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate
-FROM NL_SE_NAR
-WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0
-  {year_condition}
-GROUP BY JyoCD
-ORDER BY win_rate DESC
-""",
-    },
     "race_search": {
         "description": "レース名で検索（国内限定オプション付き）",
         "parameters": {
@@ -492,8 +414,8 @@ def _to_int(value) -> int:
 
 
 def _venue_to_code(venue_name: str) -> str:
-    """競馬場名をコードに変換（JRA + NAR対応）"""
-    return ALL_VENUE_NAME_TO_CODE.get(venue_name, venue_name)
+    """JRA競馬場名をコードに変換する。"""
+    return VENUE_NAME_TO_CODE.get(venue_name, venue_name)
 
 
 def _grade_to_code(grade_name: str) -> str:
@@ -734,8 +656,6 @@ def get_template_info(template_name: str) -> Optional[Dict[str, Any]]:
 __all__ = [
     "QUERY_TEMPLATES",
     "VENUE_NAME_TO_CODE",
-    "NAR_VENUE_NAME_TO_CODE",
-    "ALL_VENUE_NAME_TO_CODE",
     "GRADE_NAME_TO_CODE",
     "render_template",
     "list_templates",

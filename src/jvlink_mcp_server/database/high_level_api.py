@@ -22,23 +22,8 @@ VENUE_CODES = {
     '阪神': '09', '小倉': '10'
 }
 
-# NAR地方競馬場名→コード変換テーブル
-NAR_VENUE_CODES = {
-    '門別': '30', '北見': '31', '岩見沢': '32', '帯広': '33', '旭川': '34',
-    '盛岡': '35', '水沢': '36', '上山': '37', '三条': '38', '足利': '39',
-    '宇都宮': '40', '高崎': '41', '浦和': '42', '船橋': '43', '大井': '44',
-    '川崎': '45', '金沢': '46', '笠松': '47', '名古屋': '48', '園田': '49',
-    '姫路': '50', '益田': '51', '福山': '52', '高知': '53', '佐賀': '54',
-    '荒尾': '55', '中津': '56', '札幌(地)': '57',
-}
-
-# 全競馬場コード（JRA + NAR）
-ALL_VENUE_CODES = {**VENUE_CODES, **NAR_VENUE_CODES}
-
 # コード→競馬場名の逆引き
 VENUE_NAMES = {v: k for k, v in VENUE_CODES.items()}
-NAR_VENUE_NAMES = {v: k for k, v in NAR_VENUE_CODES.items()}
-ALL_VENUE_NAMES = {**VENUE_NAMES, **NAR_VENUE_NAMES}
 
 # グレードコード変換（入力形式→DBコード）
 GRADE_CODES = {
@@ -51,25 +36,14 @@ GRADE_CODES = {
     '未勝利': 'I', '新馬': 'J',
 }
 
-# ソース別テーブル名
-_SOURCE_TABLES = {
-    'jra': {'se': 'NL_SE', 'ra': 'NL_RA'},
-    'nar': {'se': 'NL_SE_NAR', 'ra': 'NL_RA_NAR'},
-}
-
-
-def _resolve_venue(venue: str, source: str = 'jra') -> str:
-    """競馬場名をコードに変換（source対応）"""
-    if source == 'nar':
-        code = NAR_VENUE_CODES.get(venue) or VENUE_CODES.get(venue)
-        if not code:
-            raise ValueError(f"不明な競馬場名: {venue}. NAR: {list(NAR_VENUE_CODES.keys())}, JRA: {list(VENUE_CODES.keys())}")
-        return code
-    else:
-        code = VENUE_CODES.get(venue)
-        if not code:
-            raise ValueError(f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}")
-        return code
+def _resolve_venue(venue: str) -> str:
+    """JRA競馬場名をコードに変換する。"""
+    code = VENUE_CODES.get(venue)
+    if not code:
+        raise ValueError(
+            f"不明な競馬場名: {venue}. 有効な値: {list(VENUE_CODES.keys())}"
+        )
+    return code
 
 
 def _compute_rates(total, wins, places_2, places_3):
@@ -81,7 +55,6 @@ def _compute_rates(total, wins, places_2, places_3):
         'place_rate_3': (places_3 / total * 100) if total > 0 else 0.0,
     }
 
-
 def _favorite_performance_impl(
     db_connection,
     venue: Optional[str] = None,
@@ -89,25 +62,20 @@ def _favorite_performance_impl(
     grade: Optional[str] = None,
     year_from: Optional[str] = None,
     distance: Optional[int] = None,
-    source: str = 'jra'
 ) -> Dict[str, Any]:
-    """人気別成績の共通実装（JRA/NAR兼用）"""
-    tables = _SOURCE_TABLES[source]
+    """JRAの人気別成績を取得する。"""
     conditions = []
     query_params: List = []
     condition_desc = []
 
-    conditions.append("Ninki = ?")
+    conditions.append("s.Ninki = ?")
     query_params.append(ninki)
     condition_desc.append(f"{ninki}番人気")
-    if source == 'nar':
-        condition_desc.append("NAR地方競馬")
-
-    conditions.append("KakuteiJyuni IS NOT NULL")
-    conditions.append("KakuteiJyuni > 0")
+    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
 
     if venue:
-        venue_code = _resolve_venue(venue, source)
+        venue_code = _resolve_venue(venue)
         conditions.append("s.JyoCD = ?")
         query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
@@ -140,8 +108,8 @@ def _favorite_performance_impl(
             SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM {tables['se']} s
-        JOIN {tables['ra']} r
+        FROM NL_SE s
+        JOIN NL_RA r
             ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
             AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
         WHERE {where_clause}
@@ -149,10 +117,10 @@ def _favorite_performance_impl(
     else:
         query = f"""
         SELECT COUNT(*) as total,
-            SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
-            SUM(CASE WHEN KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM {tables['se']} s
+            SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
+            SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
+        FROM NL_SE s
         WHERE {where_clause}
         """
 
@@ -199,7 +167,7 @@ def get_favorite_performance(
     """
     return _favorite_performance_impl(
         db_connection, venue=venue, ninki=ninki, grade=grade,
-        year_from=year_from, distance=distance, source='jra'
+        year_from=year_from, distance=distance
     )
 
 
@@ -209,23 +177,18 @@ def _jockey_stats_impl(
     venue: Optional[str] = None,
     year_from: Optional[str] = None,
     distance: Optional[int] = None,
-    source: str = 'jra'
 ) -> Dict[str, Any]:
-    """騎手成績の共通実装（JRA/NAR兼用）"""
-    tables = _SOURCE_TABLES[source]
+    """JRAの騎手成績を取得する。"""
     conditions = []
     query_params: List = []
     condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
-    if source == 'nar':
-        condition_desc.append("NAR地方競馬")
-
     conditions.append("s.KisyuRyakusyo LIKE ?")
     query_params.append('%' + jockey_name + '%')
     conditions.append("s.KakuteiJyuni IS NOT NULL")
     conditions.append("s.KakuteiJyuni > 0")
 
     if venue:
-        venue_code = _resolve_venue(venue, source)
+        venue_code = _resolve_venue(venue)
         conditions.append("s.JyoCD = ?")
         query_params.append(venue_code)
         condition_desc.append(f"{venue}競馬場")
@@ -249,8 +212,8 @@ def _jockey_stats_impl(
             SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM {tables['se']} s
-        JOIN {tables['ra']} r
+        FROM NL_SE s
+        JOIN NL_RA r
             ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
             AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
         WHERE {where_clause}
@@ -262,7 +225,7 @@ def _jockey_stats_impl(
             SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2) THEN 1 ELSE 0 END) as places_2,
             SUM(CASE WHEN s.KakuteiJyuni IN (1, 2, 3) THEN 1 ELSE 0 END) as places_3
-        FROM {tables['se']} s
+        FROM NL_SE s
         WHERE {where_clause}
         GROUP BY s.KisyuRyakusyo
         """
@@ -319,7 +282,7 @@ def get_jockey_stats(
     """
     return _jockey_stats_impl(
         db_connection, jockey_name=jockey_name, venue=venue,
-        year_from=year_from, distance=distance, source='jra'
+        year_from=year_from, distance=distance
     )
 
 
@@ -459,18 +422,15 @@ def _horse_history_impl(
     db_connection,
     horse_name: str,
     year_from: Optional[str] = None,
-    source: str = 'jra'
 ) -> pd.DataFrame:
-    """馬の戦績の共通実装（JRA/NAR兼用）"""
-    tables = _SOURCE_TABLES[source]
+    """JRAの馬の戦績を取得する。"""
     # Bameiカラムのインデックスを自動作成（未作成の場合）
-    _ensure_bamei_index(db_connection, tables['se'])
-    venue_map = ALL_VENUE_NAMES if source == 'nar' else VENUE_NAMES
+    _ensure_bamei_index(db_connection, "NL_SE")
 
     conditions = [
         "s.Bamei LIKE ?",
         "s.KakuteiJyuni IS NOT NULL",
-        "s.KakuteiJyuni > 0"
+        "s.KakuteiJyuni > 0",
     ]
     query_params: List = ['%' + horse_name + '%']
 
@@ -486,8 +446,8 @@ def _horse_history_impl(
         r.Hondai as race_name, r.Kyori as distance,
         s.KakuteiJyuni as finish, s.Ninki as popularity,
         s.KisyuRyakusyo as jockey, s.Time as time, s.Bamei as horse_name
-    FROM {tables['se']} s
-    JOIN {tables['ra']} r
+    FROM NL_SE s
+    JOIN NL_RA r
         ON s.Year = r.Year AND s.MonthDay = r.MonthDay AND s.JyoCD = r.JyoCD
         AND s.Kaiji = r.Kaiji AND s.Nichiji = r.Nichiji AND s.RaceNum = r.RaceNum
     WHERE {where_clause}
@@ -500,7 +460,7 @@ def _horse_history_impl(
         return pd.DataFrame(columns=['race_date', 'venue', 'race_name', 'distance',
                                     'finish', 'popularity', 'jockey', 'time'])
 
-    df['venue'] = df['venue_code'].map(venue_map)
+    df['venue'] = df['venue_code'].map(VENUE_NAMES)
     df = df.drop(columns=['venue_code'])
     df['finish'] = pd.to_numeric(df['finish'], errors='coerce').fillna(0).astype(int)
     df['popularity'] = pd.to_numeric(df['popularity'], errors='coerce').fillna(0).astype(int)
@@ -527,8 +487,9 @@ def get_horse_history(
         >>> df = get_horse_history(db_conn, 'ディープインパクト')
         >>> print(df.to_string())
     """
-    return _horse_history_impl(db_connection, horse_name=horse_name,
-                               year_from=year_from, source='jra')
+    return _horse_history_impl(
+        db_connection, horse_name=horse_name, year_from=year_from
+    )
 
 
 def get_sire_stats(
@@ -674,50 +635,3 @@ def get_sire_stats(
         'matched_sires': df['sire_name'].tolist(),
         'query': query
     }
-
-
-# ============================================================================
-# NAR（地方競馬）専用API — JRA版関数に委譲するラッパー
-# ============================================================================
-
-def _resolve_nar_venue(venue: str) -> str:
-    """NAR競馬場名をコードに変換。JRA/NAR両方を試す（後方互換）"""
-    return _resolve_venue(venue, source='nar')
-
-
-def get_nar_favorite_performance(
-    db_connection,
-    venue: Optional[str] = None,
-    ninki: int = 1,
-    year_from: Optional[str] = None,
-    distance: Optional[int] = None
-) -> Dict[str, Any]:
-    """NAR地方競馬の人気別成績を取得（JRA版に委譲）"""
-    return _favorite_performance_impl(
-        db_connection, venue=venue, ninki=ninki, year_from=year_from,
-        distance=distance, source='nar'
-    )
-
-
-def get_nar_jockey_stats(
-    db_connection,
-    jockey_name: str,
-    venue: Optional[str] = None,
-    year_from: Optional[str] = None
-) -> Dict[str, Any]:
-    """NAR地方競馬の騎手成績を取得（JRA版に委譲）"""
-    return _jockey_stats_impl(
-        db_connection, jockey_name=jockey_name, venue=venue,
-        year_from=year_from, source='nar'
-    )
-
-
-def get_nar_horse_history(
-    db_connection,
-    horse_name: str,
-    year_from: Optional[str] = None
-) -> pd.DataFrame:
-    """NAR地方競馬の馬の戦績を取得（JRA版に委譲）"""
-    return _horse_history_impl(
-        db_connection, horse_name=horse_name, year_from=year_from, source='nar'
-    )

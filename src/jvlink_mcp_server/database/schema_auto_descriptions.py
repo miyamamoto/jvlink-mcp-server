@@ -21,35 +21,33 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     col = column_name
 
     # === 共通ヘッダー項目 ===
-    if col == "RecordSpec" or col == "headRecordSpec":
+    if col == "RecordSpec":
         return "レコード種別ID（例：RA, SE, HR等）"
-    if col == "DataKubun" or col == "headDataKubun":
+    if col == "DataKubun":
         return "データ区分（1=通常, 2=削除, 9=WIN5等）"
-    if col == "MakeDate" or col == "headMakeDate":
+    if col == "MakeDate":
         return "データ作成年月日（YYYYMMDD形式）"
     if col == "RecordDelimiter":
         return "レコード区切り（改行コード）"
 
-    # === 識別子（id*または直接名） ===
-    if col == "Year" or col == "idYear":
+    # === jrvltsql 2.0 識別子 ===
+    if col == "Year":
         return "開催年（YYYY形式）"
-    if col == "MonthDay" or col == "idMonthDay":
+    if col == "MonthDay":
         return "開催月日（MMDD形式）"
-    if col == "JyoCD" or col == "idJyoCD":
-        if table_name.endswith("_NAR"):
-            return "地方競馬場コード（30=門別, 35=盛岡, 36=水沢, 42=浦和, 43=船橋, 44=大井, 45=川崎, 46=金沢, 47=笠松, 48=名古屋, 49=園田, 50=姫路, 53=高知, 54=佐賀）"
+    if col == "JyoCD":
         return "競馬場コード（01=札幌, 02=函館, 03=福島, 04=新潟, 05=東京, 06=中山, 07=中京, 08=京都, 09=阪神, 10=小倉）"
-    if col == "Kaiji" or col == "idKaiji":
+    if col == "Kaiji":
         return "開催回次（第何回開催か）"
-    if col == "Nichiji" or col == "idNichiji":
+    if col == "Nichiji":
         return "開催日次（何日目か）"
-    if col == "RaceNum" or col == "idRaceNum":
+    if col == "RaceNum":
         return "レース番号（1-12）"
-    if col == "idUmaban" or col == "Umaban":
+    if col == "Umaban":
         return "馬番"
 
     # === NL_HR/RT_HR: 払戻配当配列（先頭は番号なし＝1件目、以降は2始まりの実番号） ===
-    if table_name.replace("_NAR", "") in ("NL_HR", "RT_HR"):
+    if table_name in ("NL_HR", "RT_HR"):
         hr_bet = {
             "Tan": "単勝", "Fuku": "複勝", "Waku": "枠連", "Umaren": "馬連",
             "Wide": "ワイド", "Umatan": "馬単", "Sanrenfuku": "3連複",
@@ -1264,19 +1262,8 @@ def generate_column_description(table_name: str, column_name: str) -> str:
         num = int(saikin_match.group(1)) + 1
         field = saikin_match.group(2)
 
-        # IDフィールド（SaikinJyusyoidYear等）
-        if field.startswith("SaikinJyusyoid"):
-            id_part = field.replace("SaikinJyusyoid", "")
-            id_map = {
-                "Year": "開催年",
-                "MonthDay": "開催月日",
-                "JyoCD": "競馬場コード",
-                "Kaiji": "回次",
-                "Nichiji": "日次",
-                "RaceNum": "レース番号"
-            }
-            if id_part in id_map:
-                return f"最近重賞{num}の{id_map[id_part]}"
+        if field in {"SaikinJyusyoid", "_id"}:
+            return f"最近重賞{num}のレース識別情報"
 
         # 他のフィールド
         field_map = {

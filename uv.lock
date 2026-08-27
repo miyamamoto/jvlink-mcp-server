@@ -569,13 +569,14 @@ wheels = [
 
 [[package]]
 name = "jvlink-mcp-server"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "japanize-matplotlib" },
     { name = "matplotlib" },
     { name = "mcp", extra = ["cli"] },
+    { name = "packaging" },
     { name = "pandas" },
     { name = "pg8000" },
     { name = "python-dotenv" },
@@ -593,7 +594,8 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.4.1" },
     { name = "japanize-matplotlib", specifier = ">=1.1.3" },
     { name = "matplotlib", specifier = ">=3.10.7" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.21.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.21.0,<2" },
+    { name = "packaging", specifier = ">=25.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pg8000", specifier = ">=1.31.2" },
     { name = "python-dotenv", specifier = ">=1.0.0" },

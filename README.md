@@ -238,6 +238,10 @@ DB_TYPE=duckdb
 DB_PATH=/path/to/keiba.duckdb
 ```
 
+DuckDBは、このMCPサーバーが読み取り専用で接続できる互換入力です。
+`jrvltsql 2.0.0` 自体の書き込み先はSQLiteまたはPostgreSQLです。DuckDBを使う場合は、
+SQLite/PostgreSQLから利用者が別途変換したデータベースを指定してください。
+
 ### PostgreSQL
 
 個別の環境変数で指定:
@@ -267,14 +271,6 @@ JRA-VANのデータ取得（jrvltsql）はWindows専用ですが、**データ�
 **方法1: SQLiteファイルをコピー** — Dropbox、Google Driveなどで `keiba.db` をコピーするだけ。
 
 **方法2: PostgreSQL経由** — jrvltsqlはPostgreSQLへの書き込みにも対応。Mac/LinuxからWindowsのPostgreSQLに接続すればリアルタイムで最新データを利用できます。
-
----
-
-## NAR（地方競馬）対応
-
-標準機能として地方競馬データに対応しています（NAR対応ツール: `nar_favorite_performance`, `nar_jockey_stats`, `nar_horse_history`）。大井・船橋・川崎・浦和・名古屋・園田など主要な地方競馬場のデータを分析できます。
-
-地方競馬データの取得には [NV-Link](https://www.nvlink.jp/) が必要です。
 
 ---
 
@@ -325,9 +321,17 @@ JRA-VANのデータ取得（jrvltsql）はWindows専用ですが、**データ�
 
 ## 更新履歴
 
+### v0.7.0（2026-08-27）
+
+- stable `jrvltsql 2.0.0` の80 JRAテーブル・複合主キー契約へ同期
+- PostgreSQLの識別子大小文字とpg8000パラメータ形式に対応
+- 親リリース同期を、保護ブランチへの直接pushから実wheel検証済みPR作成へ変更
+- 旧論理テーブル名とDuckDB生成に関する誤案内を修正
+- 本MCPの対象外だったNAR用ツール・スキーマ・クエリテンプレートを公開面から削除
+
 ### v0.6.0（2026-06-16）
 
-- jrvltsql v1.6.0 へスキーマ同期（v1.2.0 → v1.6.0）
+- jrvltsql v1.6.0 へスキーマ同期（当時の履歴）
 - テーブル意味変更に追従: `NL_HC` 調教師賞金 → **坂路調教（HANRO）タイム**、`NL_AV`/`RT_AV` セリ市情報 → **出走取消・競走除外馬情報**
 - `NL_RA`/`RT_RA` にコーナー通過順位（`Corner2-4`, `Syukaisu2-4`, `TsukaJyuni2-4`）の説明を追加
 - `NL_HR`/`RT_HR`（払戻）の配当配列（複勝最大5件・ワイド最大7件・3連単最大6件等）に列説明を追加
@@ -342,7 +346,7 @@ JRA-VANのデータ取得（jrvltsql）はWindows専用ですが、**データ�
 - バグ修正: `high_level_api.py`のGRADE_CODESの重複キーを削除
 - バグ修正: `_horse_history_impl`の不要な型変換を`pd.to_numeric`に統一
 - ツール名変更: MCPツール`generate_sql_from_natural_language` → `get_sql_generation_prompt`
-- NAR（地方競馬）対応をmasterブランチに統合（別ブランチ不要）
+- NAR（地方競馬）対応を当時追加（v0.7.0で対象外として削除）
 - CI/CD: PRごとの自動テスト（`ci.yml`）とjrvltsqlスキーマ同期・自動リリース（`sync-parent.yml`）を追加
 
 ## ライセンス

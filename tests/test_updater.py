@@ -1,6 +1,7 @@
 """Tests for the auto-updater module."""
 
 import json
+import importlib.metadata
 import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -36,10 +37,15 @@ class TestVersionComparison:
         assert _version_newer("0.2.0", "0.2.0") is False
         assert _version_newer("0.1.0", "0.2.0") is False
         assert _version_newer("v0.2.0", "v0.2.0") is False
+        assert _version_newer("v0.7.0", "unknown") is False
+        assert _version_newer("not-a-version", "0.7.0") is False
 
     def test_version_with_v_prefix(self):
         assert _version_newer("v1.0.0", "v0.9.0") is True
         assert _version_newer("v0.2.0", "0.2.0") is False
+
+    def test_final_release_is_newer_than_prerelease(self):
+        assert _version_newer("v0.7.0", "0.7.0.dev1") is True
 
 
 class TestGetCurrentVersion:
@@ -53,7 +59,21 @@ class TestGetCurrentVersion:
         mock_run.return_value = MagicMock(returncode=1)
         version = get_current_version()
         # Should read from pyproject.toml
-        assert version == "0.2.0" or version != "unknown"
+        assert version == "0.7.0"
+
+    @patch("jvlink_mcp_server.updater.subprocess.run")
+    def test_fallback_to_installed_distribution_metadata(self, mock_run, tmp_path):
+        mock_run.return_value = MagicMock(returncode=1)
+        with (
+            patch("jvlink_mcp_server.updater.PROJECT_ROOT", tmp_path),
+            patch.object(importlib.metadata, "version", return_value="0.7.0"),
+        ):
+            assert get_current_version() == "0.7.0"
+
+    def test_update_state_is_outside_the_installed_source_tree(self):
+        from jvlink_mcp_server.updater import PROJECT_ROOT
+
+        assert not UPDATE_CHECK_FILE.is_relative_to(PROJECT_ROOT)
 
 
 class TestCheckForUpdates:
@@ -115,6 +135,24 @@ class TestPerformUpdate:
         mock_check.return_value = None
         result = perform_update()
         assert result["success"] is False
+
+    @patch("jvlink_mcp_server.updater.subprocess.run")
+    @patch("jvlink_mcp_server.updater.check_for_updates")
+    def test_installed_wheel_does_not_attempt_git_update(
+        self, mock_check, mock_run, tmp_path
+    ):
+        mock_check.return_value = {
+            "current_version": "0.7.0",
+            "latest_version": "0.8.0",
+            "update_available": True,
+        }
+        with patch("jvlink_mcp_server.updater.PROJECT_ROOT", tmp_path):
+            result = perform_update(confirmed=True)
+
+        assert result["success"] is False
+        assert result["requires_manual_update"] is True
+        assert "pip install" in result["message"]
+        mock_run.assert_not_called()
 
 
 class TestStartupCheck:

@@ -30,7 +30,7 @@ class TestIntegrationSQLite:
             tables = db.get_tables()
             assert len(tables) > 0
             # 主要テーブルの存在確認
-            assert "NL_SE" in tables or "NL_SE_RACE_UMA" in tables
+            assert "NL_SE" in tables
 
     def test_get_table_schema(self):
         from jvlink_mcp_server.database.connection import DatabaseConnection

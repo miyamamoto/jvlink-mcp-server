@@ -41,7 +41,7 @@ JRVLTSQL_DIR="${JRVLTSQL_DIR:-$HOME/jrvltsql}"
 
 echo -e "${BOLD}"
 echo "╔════════════════════════════════════════════╗"
-echo "║   JVLink MCP Server インストーラー v0.5.0  ║"
+echo "║   JVLink MCP Server インストーラー v0.7.0  ║"
 echo "╚════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -177,6 +177,10 @@ else
     read -rp "$(echo -e "${YELLOW}jrvltsql も一緒にインストールしますか？ [Y/n]${NC} ")" INSTALL_JRVLTSQL
     if [[ "${INSTALL_JRVLTSQL,,}" != "n" ]]; then
         header "    jrvltsql インストール"
+        if [[ "$PY_MAJOR" -lt 3 ]] || [[ "$PY_MAJOR" -eq 3 && "$PY_MINOR" -lt 12 ]]; then
+            err "jrvltsql 2.0.0にはPython 3.12以上が必要です（検出: $PY_VER）"
+            exit 1
+        fi
         if [[ -d "$JRVLTSQL_DIR/.git" ]]; then
             cd "$JRVLTSQL_DIR"
             git pull --ff-only 2>/dev/null || git pull
@@ -186,16 +190,13 @@ else
             ok "jrvltsql をクローンしました → $JRVLTSQL_DIR"
         fi
         cd "$JRVLTSQL_DIR"
-        if command -v pip3 &>/dev/null; then
-            pip3 install -e . --quiet 2>/dev/null || pip3 install -e .
-        else
-            pip install -e . --quiet 2>/dev/null || pip install -e .
-        fi
+        uv sync --quiet 2>/dev/null || uv sync
         ok "jrvltsql インストール完了"
         echo ""
         info "データベース構築は Windows 上で以下を実行してください:"
         echo "    cd $JRVLTSQL_DIR"
-        echo "    python scripts/quickstart.py"
+        echo "    uv run jltsql init"
+        echo "    uv run jltsql create-tables --db sqlite"
         echo ""
     fi
 

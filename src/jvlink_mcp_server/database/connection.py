@@ -14,6 +14,32 @@ logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy')
 
 
+def _adapt_qmark_parameters(query: str) -> str:
+    """Convert unquoted DB-API qmark placeholders to pg8000 format markers."""
+    result = []
+    quote = None
+    index = 0
+    while index < len(query):
+        char = query[index]
+        if quote:
+            result.append(char)
+            if char == quote:
+                if index + 1 < len(query) and query[index + 1] == quote:
+                    result.append(query[index + 1])
+                    index += 1
+                else:
+                    quote = None
+        elif char in ("'", '"'):
+            quote = char
+            result.append(char)
+        elif char == "?":
+            result.append("%s")
+        else:
+            result.append(char)
+        index += 1
+    return "".join(result)
+
+
 class DatabaseConnection:
     """JVLinkデータベースへの接続を管理するクラス
 
@@ -110,6 +136,8 @@ class DatabaseConnection:
         if self.db_type in ["sqlite", "duckdb"]:
             return pd.read_sql_query(query, conn, params=params)
         elif self.db_type == "postgresql":
+            if params and "?" in query:
+                query = _adapt_qmark_parameters(query)
             return pd.read_sql_query(query, conn, params=params)
 
     def execute_safe_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
@@ -157,7 +185,10 @@ class DatabaseConnection:
             query = "SELECT tablename FROM pg_tables WHERE schemaname='public'"
 
         result = self.execute_query(query)
-        return result.iloc[:, 0].tolist()
+        tables = result.iloc[:, 0].tolist()
+        if self.db_type == "postgresql":
+            return [str(table).upper() for table in tables]
+        return tables
 
     def get_table_schema(self, table_name: str) -> pd.DataFrame:
         """テーブルのスキーマ情報を取得
@@ -173,16 +204,18 @@ class DatabaseConnection:
 
         # テーブル名のホワイトリスト検証
         valid_tables = self.get_tables()
-        if table_name not in valid_tables:
+        valid_table_lookup = {name.casefold(): name for name in valid_tables}
+        actual_table_name = valid_table_lookup.get(table_name.casefold())
+        if actual_table_name is None:
             raise ValueError(f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}")
 
         if self.db_type == "sqlite":
-            query = f"PRAGMA table_info({table_name})"
+            query = f"PRAGMA table_info({actual_table_name})"
             df = self.execute_query(query)
             df = df.rename(columns={"name": "column_name", "type": "column_type"})
 
         elif self.db_type == "duckdb":
-            query = f"DESCRIBE {table_name}"
+            query = f"DESCRIBE {actual_table_name}"
             df = self.execute_query(query)
 
         elif self.db_type == "postgresql":
@@ -192,7 +225,7 @@ class DatabaseConnection:
                 WHERE table_name = %s
                 ORDER BY ordinal_position
             """
-            df = self.execute_query(query, params=(table_name,))
+            df = self.execute_query(query, params=(actual_table_name.lower(),))
             df = df.rename(columns={"data_type": "column_type"})
 
         return df

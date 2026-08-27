@@ -12,7 +12,6 @@ from jvlink_mcp_server.database.connection import DatabaseConnection
 from jvlink_mcp_server.database.high_level_api import (
     get_horse_history, get_jockey_stats, get_sire_stats,
     get_favorite_performance, get_frame_stats,
-    get_nar_horse_history, get_nar_jockey_stats, get_nar_favorite_performance,
 )
 from jvlink_mcp_server.database.query_templates import render_template, list_templates
 import pandas as pd
@@ -113,13 +112,6 @@ for name in ['オグリキャップ', 'ナリタブライアン', 'ディープ�
         if df.empty: return f"{n}: データなし（古すぎる可能性）"
         return f"{n}: {len(df)}戦"
     test(f"B6: 歴史的名馬 {name}", t6)
-
-# 7. 地方馬（NARテーブル）
-def t7():
-    df = db.execute_safe_query("SELECT COUNT(*) as cnt FROM NL_SE_NAR")
-    cnt = int(df.iloc[0]['cnt'])
-    return f"NL_SE_NAR: {cnt}件"
-test("B7: NARデータ件数", t7)
 
 # 8. 短い/長い名前の馬
 def t8():
@@ -432,16 +424,6 @@ def t29():
     return df.to_dict('records')
 test("G29: ウィンドウ関数（RANK）", t29)
 
-# 30. UNION
-def t30():
-    df = db.execute_safe_query("""
-        SELECT 'JRA' as source, COUNT(*) as cnt FROM NL_SE WHERE Year=2024
-        UNION ALL
-        SELECT 'NAR' as source, COUNT(*) as cnt FROM NL_SE_NAR WHERE Year=2024
-    """)
-    return df.to_dict('records')
-test("G30: UNION (JRA+NAR)", t30)
-
 print("\n" + "=" * 70)
 print("H. 境界値・ストレス")
 print("=" * 70)
@@ -482,19 +464,6 @@ def t34():
     """)
     return df.iloc[0].to_dict()
 test("H34: NULL値カラム集計", t34)
-
-# 35. 空のNARテーブル
-def t35():
-    nar_tables = ['NL_SE_NAR', 'NL_RA_NAR']
-    info = {}
-    for t in nar_tables:
-        try:
-            df = db.execute_safe_query(f"SELECT COUNT(*) as cnt FROM {t}")
-            info[t] = int(df.iloc[0]['cnt'])
-        except Exception as e:
-            info[t] = f"ERROR: {e}"
-    return info
-test("H35: NARテーブル件数", t35)
 
 # ============================================================
 # サマリ
