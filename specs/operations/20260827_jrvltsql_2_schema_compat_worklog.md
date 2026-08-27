@@ -180,3 +180,20 @@ change the development collector or either PostgreSQL database.
   used the container port instead of the published host port; neither changed
   the database, and the successful probe loaded dotenv without logging values.
 - PR-thread closure and the final exact-SHA CI/review gate remain pending.
+
+## Final exact-SHA review follow-up — 2026-08-27
+
+- CI passed on `23aedcb7931e654cf10b3c0a7d888ec085175b36`, the seven prior review
+  threads were answered/resolved, and one final Codex review was requested.
+- That review found two distinct P2 regressions. Both were reproduced red
+  before production changes (`2 failed`): an installed wheel beneath an
+  unrelated tagged checkout inherited the host repository's `v99.0.0`, and
+  the distance suitability feature-rate example lacked a confirmed-result
+  predicate.
+- The batched repair treats Git metadata as authoritative only when
+  `PROJECT_ROOT` is itself a source checkout (`pyproject.toml` plus `.git`);
+  installed distributions use package metadata instead. All feature examples
+  that derive win rates now require `KakuteiJyuni > 0`, including distance,
+  popularity, and sire groupings.
+- Focused post-repair result: `44 passed`. A final commit, both full Python
+  suites, CI, thread closure, and clean exact-SHA gate remain pending.

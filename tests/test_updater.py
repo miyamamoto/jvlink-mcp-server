@@ -70,6 +70,19 @@ class TestGetCurrentVersion:
         ):
             assert get_current_version() == "0.7.0"
 
+    @patch("jvlink_mcp_server.updater.subprocess.run")
+    def test_installed_distribution_does_not_inherit_parent_git_tag(
+        self, mock_run, tmp_path
+    ):
+        mock_run.return_value = MagicMock(returncode=0, stdout="v99.0.0\n")
+        installed_root = tmp_path / "host-repository" / ".venv" / "lib"
+        installed_root.mkdir(parents=True)
+        with (
+            patch("jvlink_mcp_server.updater.PROJECT_ROOT", installed_root),
+            patch.object(importlib.metadata, "version", return_value="0.7.0"),
+        ):
+            assert get_current_version() == "0.7.0"
+
     def test_update_state_is_outside_the_installed_source_tree(self):
         from jvlink_mcp_server.updater import PROJECT_ROOT
 

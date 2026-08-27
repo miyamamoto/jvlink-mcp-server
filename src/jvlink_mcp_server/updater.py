@@ -43,18 +43,21 @@ UPDATE_CHECK_FILE = _default_update_check_file()
 
 def get_current_version() -> str:
     """Get current version from git, source metadata, or installed metadata."""
-    try:
-        result = subprocess.run(
-            ["git", "describe", "--tags", "--abbrev=0"],
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=5,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-    except Exception:
-        pass
+    toml_path = PROJECT_ROOT / "pyproject.toml"
+    source_checkout = toml_path.is_file() and (PROJECT_ROOT / ".git").exists()
+
+    if source_checkout:
+        try:
+            result = subprocess.run(
+                ["git", "describe", "--tags", "--abbrev=0"],
+                capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=5,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
 
     try:
-        toml_path = PROJECT_ROOT / "pyproject.toml"
         if toml_path.exists():
             for line in toml_path.read_text(encoding="utf-8").splitlines():
                 if line.strip().startswith("version"):

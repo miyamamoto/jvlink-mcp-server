@@ -100,6 +100,16 @@ def test_public_docs_exclude_unconfirmed_result_rows_and_lint_clean_fence():
     for query_surface in query_surfaces:
         contents = Path(query_surface).read_text(encoding="utf-8")
         assert "KakuteiJyuni IS NOT NULL" not in contents, query_surface
+
+    feature_data = json.loads(
+        Path("data/feature_importance.json").read_text(encoding="utf-8")
+    )
+    for feature in feature_data["important_features"]:
+        sql_example = feature["sql_example"]
+        if "SUM(CASE WHEN s.KakuteiJyuni = 1" in sql_example:
+            assert "s.KakuteiJyuni > 0" in sql_example, feature["name"]
+        elif "SUM(CASE WHEN KakuteiJyuni = 1" in sql_example:
+            assert "KakuteiJyuni > 0" in sql_example, feature["name"]
     assert "```\nC:/Users/mitsu/work/jrvltsql" not in setup
 
 

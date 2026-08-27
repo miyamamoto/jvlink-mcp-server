@@ -34,7 +34,7 @@
       "description": "馬の得意距離。距離延長・短縮の影響は大きい",
       "target_usage": "「距離別成績」で集計。前走との距離差を確認",
       "statistical_impact": "得意距離での勝率は苦手距離の2-3倍。短縮は有利な傾向",
-      "sql_example": "SELECT s.KettoNum, r.Kyori, COUNT(*) AS races, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum GROUP BY s.KettoNum, r.Kyori"
+      "sql_example": "SELECT s.KettoNum, r.Kyori, COUNT(*) AS races, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY s.KettoNum, r.Kyori"
     },
     {
       "name": "馬場状態適性",
@@ -79,7 +79,7 @@
       "description": "市場の評価。1番人気の信頼度は高い",
       "target_usage": "「人気別成績」で集計",
       "statistical_impact": "1番人気の勝率32.7%、複勝率64.5%（2017-2019年）",
-      "sql_example": "SELECT Ninki, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE Ninki IS NOT NULL GROUP BY Ninki"
+      "sql_example": "SELECT Ninki, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE Ninki IS NOT NULL AND KakuteiJyuni > 0 GROUP BY Ninki"
     },
     {
       "name": "馬体重",
@@ -106,7 +106,7 @@
       "description": "父馬の産駒傾向。距離・馬場適性は遺伝する",
       "target_usage": "「種牡馬別成績」で集計。コース別・距離別で分析",
       "statistical_impact": "種牡馬によってダート・芝、短距離・長距離の得意不得意が明確",
-      "sql_example": "SELECT u.Ketto3InfoBamei1 AS Sire, r.Kyori, COUNT(*) AS races, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum=u.KettoNum JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum GROUP BY u.Ketto3InfoBamei1, r.Kyori"
+      "sql_example": "SELECT u.Ketto3InfoBamei1 AS Sire, r.Kyori, COUNT(*) AS races, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum=u.KettoNum JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY u.Ketto3InfoBamei1, r.Kyori"
     },
     {
       "name": "母父（ブルードメアサイア）",
