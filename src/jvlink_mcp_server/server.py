@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP
 # .envファイルを読み込む
 load_dotenv()
 from .database.connection import DatabaseConnection
+from .database.utils import reject_unsupported_nar_table_reference
 from .database.schema_info import (
     get_schema_description,
     get_target_equivalent_query_examples,
@@ -444,13 +445,30 @@ def validate_sql_query(sql_query: str) -> dict:
     query_upper = sql_query.upper()
     found_dangerous = [kw for kw in dangerous_keywords if kw in query_upper]
 
-    is_safe = len(found_dangerous) == 0 and "SELECT" in query_upper
+    try:
+        reject_unsupported_nar_table_reference(sql_query)
+        unsupported_provider = False
+    except ValueError:
+        unsupported_provider = True
+
+    is_safe = (
+        len(found_dangerous) == 0
+        and "SELECT" in query_upper
+        and not unsupported_provider
+    )
+    if unsupported_provider:
+        recommendation = "NARテーブルはこのMCPのサポート対象外です"
+    elif is_safe:
+        recommendation = "安全に実行可能"
+    else:
+        recommendation = "危険なキーワードが含まれています"
 
     return {
         "is_safe": is_safe,
         "query": sql_query,
         "dangerous_keywords_found": found_dangerous,
-        "recommendation": "安全に実行可能" if is_safe else "危険なキーワードが含まれています",
+        "unsupported_provider_table": unsupported_provider,
+        "recommendation": recommendation,
         "can_execute": is_safe
     }
 

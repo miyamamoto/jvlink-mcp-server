@@ -6,7 +6,8 @@ from typing import Any, Optional
 import warnings
 import pandas as pd
 
-from .utils import validate_identifier
+from .jrvltsql_2_contract import JRVLTSQL_2_PRIMARY_KEYS
+from .utils import reject_unsupported_nar_table_reference, validate_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,8 @@ class DatabaseConnection:
         Raises:
             ValueError: 危険なクエリが検出された場合
         """
+        reject_unsupported_nar_table_reference(query)
+
         # 複文実行をブロック（セミコロンによる複数SQL文の実行を防止）
         if ';' in query.strip().rstrip(';'):
             raise ValueError("Multiple SQL statements are not allowed.")
@@ -185,10 +188,14 @@ class DatabaseConnection:
             query = "SELECT tablename FROM pg_tables WHERE schemaname='public'"
 
         result = self.execute_query(query)
-        tables = result.iloc[:, 0].tolist()
-        if self.db_type == "postgresql":
-            return [str(table).upper() for table in tables]
-        return tables
+        physical_tables = {
+            str(table).casefold(): str(table) for table in result.iloc[:, 0].tolist()
+        }
+        return [
+            table_name
+            for table_name in JRVLTSQL_2_PRIMARY_KEYS
+            if table_name.casefold() in physical_tables
+        ]
 
     def get_table_schema(self, table_name: str) -> pd.DataFrame:
         """テーブルのスキーマ情報を取得
@@ -202,10 +209,20 @@ class DatabaseConnection:
         validate_identifier(table_name, "table name")
         self.connect()
 
+        supported_table_lookup = {
+            name.casefold(): name for name in JRVLTSQL_2_PRIMARY_KEYS
+        }
+        canonical_table_name = supported_table_lookup.get(table_name.casefold())
+        if canonical_table_name is None:
+            raise ValueError(
+                f"テーブル '{table_name}' は存在しません"
+                "（not a supported JRA table）。"
+            )
+
         # テーブル名のホワイトリスト検証
         valid_tables = self.get_tables()
         valid_table_lookup = {name.casefold(): name for name in valid_tables}
-        actual_table_name = valid_table_lookup.get(table_name.casefold())
+        actual_table_name = valid_table_lookup.get(canonical_table_name.casefold())
         if actual_table_name is None:
             raise ValueError(f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}")
 

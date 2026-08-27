@@ -113,6 +113,11 @@ change the development collector or either PostgreSQL database.
 - Added a single public-surface regression first. Before removal it failed with
   `{'nar_favorite_performance', 'nar_horse_history', 'nar_jockey_stats'}` still
   registered.
+- A second same-root negative was added after the mixed-provider development
+  PostgreSQL revealed 43 physical NAR tables through generic discovery. Before
+  the filter it failed with `['NL_RA', 'NL_RA_NAR']` instead of the JRA-only
+  list. Generic schema access, SQL execution, and the SQL validator now reject
+  NAR physical identifiers while ordinary JRA SELECT queries remain green.
 - Removed NAR MCP tools, resources, high-level APIs, schema entries, venue
   constants, query templates, sample-data paths, live probes, and active
   documentation. The wheel must expose JRA only; NAR remains the responsibility
@@ -121,13 +126,15 @@ change the development collector or either PostgreSQL database.
 ### Completed evidence on the uncommitted aggregate
 
 - Focused contract suite: `92 passed`.
-- Full default Python 3.11 suite: `182 passed, 8 skipped`.
-- Fresh isolated Python 3.12.11 suite: `182 passed, 8 skipped`.
+- Full default Python 3.11 suite: `183 passed, 8 skipped`.
+- Fresh isolated Python 3.12.11 suite: `183 passed, 8 skipped`.
 - Upstream-generated 80-table SQLite MCP stdio smoke: 22 tools, 6 resources,
   zero NAR surface, `NL_SE` 103 columns, and successful favorite analysis.
-- Development PostgreSQL read-only MCP stdio smoke: 130 physical tables,
-  `NL_SE` 103 columns, successful positive-row favorite analysis, and zero NAR
-  tools. No database mutation or collector action was performed.
+- Development PostgreSQL read-only MCP stdio smoke: 130 physical database
+  tables, exactly 80 JRA tables exposed by the MCP, `NL_SE` 103 columns,
+  successful positive-row favorite analysis, zero NAR tools/tables, and an
+  explicit NAR query rejected. No database mutation or collector action was
+  performed.
 - Fresh wheel/sdist build succeeded. Isolated Python 3.12 wheel install reports
   metadata/package/updater version `0.7.0`, 22 tools, 80 static JRA tables, and
   zero NAR runtime-source hits.
