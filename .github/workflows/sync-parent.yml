@@ -25,8 +25,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LATEST=$(gh api repos/miyamamoto/jrvltsql/releases/latest --jq '.tag_name')
+          PARENT_SHA=$(gh api "repos/miyamamoto/jrvltsql/commits/$LATEST" --jq '.sha')
           STORED=$(tr -d '[:space:]' < .github/jrvltsql_version.txt)
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$PARENT_SHA" >> "$GITHUB_OUTPUT"
           echo "stored=$STORED" >> "$GITHUB_OUTPUT"
           if [ -n "$LATEST" ] && [ "$LATEST" != "$STORED" ]; then
             echo "new_release=true" >> "$GITHUB_OUTPUT"
@@ -80,19 +82,12 @@ jobs:
           PY
           uv run pytest -q
 
-      - name: Open issue on validation failure
-        if: failure() && steps.parent.outputs.new_release == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue create \
-            --title "jrvltsql ${{ steps.parent.outputs.latest }} compatibility validation failed" \
-            --label parent-update \
-            --body "The exact upstream wheel or its generated SQLite schema failed the MCP compatibility gate. Inspect workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
-
-      - name: Prepare update commit
+      - name: Prepare update tree
         if: steps.parent.outputs.new_release == 'true'
         id: update
+        env:
+          PARENT_TAG: ${{ steps.parent.outputs.latest }}
+          PARENT_SHA: ${{ steps.parent.outputs.commit_sha }}
         run: |
           CURRENT=$(python - <<'PY'
           import tomllib
@@ -101,18 +96,100 @@ jobs:
           )
           IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
           NEW="$MAJOR.$MINOR.$((PATCH + 1))"
-          BRANCH="chore/jrvltsql-${{ steps.parent.outputs.latest }}"
+          BRANCH="chore/jrvltsql-$PARENT_TAG"
           BRANCH=${BRANCH//\//-}
-          sed -i "s/^version = \"$CURRENT\"/version = \"$NEW\"/" pyproject.toml
-          echo "${{ steps.parent.outputs.latest }}" > .github/jrvltsql_version.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add pyproject.toml .github/jrvltsql_version.txt
-          git commit -m "chore: validate jrvltsql ${{ steps.parent.outputs.latest }}"
-          git push --force-with-lease origin "$BRANCH"
+          export CURRENT NEW
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          current = os.environ["CURRENT"]
+          new = os.environ["NEW"]
+          parent_tag = os.environ["PARENT_TAG"]
+          parent_version = parent_tag.removeprefix("v")
+          parent_sha = os.environ["PARENT_SHA"]
+
+          def replace_once(path: str, pattern: str, replacement: str) -> None:
+              file_path = Path(path)
+              contents = file_path.read_text(encoding="utf-8")
+              updated, count = re.subn(pattern, replacement, contents, count=1)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one version surface in {path}")
+              file_path.write_text(updated, encoding="utf-8")
+
+          replace_once(
+              "pyproject.toml",
+              rf'(?m)^version = "{re.escape(current)}"$',
+              f'version = "{new}"',
+          )
+          replace_once(
+              "src/jvlink_mcp_server/__init__.py",
+              rf'(?m)^__version__ = "{re.escape(current)}"$',
+              f'__version__ = "{new}"',
+          )
+          manifest_path = Path("manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          if manifest.get("version") != current:
+              raise SystemExit("manifest version does not match pyproject.toml")
+          manifest["version"] = new
+          manifest_path.write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          contract_path = "src/jvlink_mcp_server/database/jrvltsql_2_contract.py"
+          replace_once(
+              contract_path,
+              r'(?m)^JRVLTSQL_VERSION = "[^"]+"$',
+              f'JRVLTSQL_VERSION = "{parent_version}"',
+          )
+          replace_once(
+              contract_path,
+              r'(?m)^JRVLTSQL_GIT_SHA = "[0-9a-f]{40}"$',
+              f'JRVLTSQL_GIT_SHA = "{parent_sha}"',
+          )
+          Path(".github/jrvltsql_version.txt").write_text(
+              parent_tag + "\n", encoding="utf-8"
+          )
+          PY
+          uv lock
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Validate proposed tree
+        if: steps.parent.outputs.new_release == 'true'
+        run: |
+          uv run pytest -q
+          uv build --out-dir /tmp/jvlink-mcp-proposal
+
+      - name: Open issue on validation failure
+        if: failure() && steps.parent.outputs.new_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "jrvltsql ${{ steps.parent.outputs.latest }} compatibility validation failed" \
+            --label parent-update \
+            --body "The exact upstream wheel, generated SQLite schema, or proposed MCP update failed the compatibility gate. Inspect workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+
+      - name: Commit and push proposal
+        if: steps.parent.outputs.new_release == 'true'
+        env:
+          PARENT_TAG: ${{ steps.parent.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/jrvltsql_version.txt \
+            manifest.json \
+            pyproject.toml \
+            src/jvlink_mcp_server/__init__.py \
+            src/jvlink_mcp_server/database/jrvltsql_2_contract.py \
+            uv.lock
+          git commit -m "chore: validate jrvltsql $PARENT_TAG"
+          git push --force-with-lease origin "${{ steps.update.outputs.branch }}"
 
       - name: Open or update compatibility PR
         if: steps.parent.outputs.new_release == 'true'

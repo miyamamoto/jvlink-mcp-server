@@ -107,7 +107,7 @@ def get_sample_data(
 
     # 結果データがあるレコードを優先（NL_SE系の場合）— INTEGER型なので > 0 で比較
     if table_name == "NL_SE":
-        sql += " AND KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0" if where_clause else " WHERE KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0"
+        sql += " AND KakuteiJyuni > 0" if where_clause else " WHERE KakuteiJyuni > 0"
 
     sql += f" LIMIT {num_rows}"
 
@@ -251,7 +251,7 @@ def get_data_snapshot(db_connection) -> Dict[str, Any]:
             MIN(Year || '-' || MonthDay) as earliest,
             MAX(Year || '-' || MonthDay) as latest
         FROM NL_SE
-        WHERE KakuteiJyuni IS NOT NULL
+        WHERE KakuteiJyuni > 0
         """
         df = db_connection.execute_safe_query(period_sql)
         if not df.empty:
@@ -332,7 +332,15 @@ def _get_data_format_notes(table_name: str) -> List[str]:
 def _get_column_description(table_name: str, column_name: str) -> str:
     """カラムの説明を取得"""
     descriptions = _get_column_info(table_name)
-    return descriptions.get(column_name, "説明なし")
+    canonical_name = column_name.casefold()
+    return next(
+        (
+            description
+            for candidate_name, description in descriptions.items()
+            if candidate_name.casefold() == canonical_name
+        ),
+        "説明なし",
+    )
 
 
 def _get_table_description(table_name: str) -> str:

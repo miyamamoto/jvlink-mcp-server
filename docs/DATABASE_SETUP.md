@@ -21,7 +21,7 @@ cd jrvltsql
 
 jrvltsql 2.0.0はSQLiteまたはPostgreSQLへ書き込みます：
 
-```
+```text
 C:/Users/mitsu/work/jrvltsql/data/keiba.db      # SQLite
 # PostgreSQLはDB_HOST/DB_PORT/DB_NAME等で接続
 ```

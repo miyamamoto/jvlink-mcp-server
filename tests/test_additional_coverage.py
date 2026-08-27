@@ -46,10 +46,11 @@ def test_column_examples_accept_postgresql_column_case():
         {"kakuteijyuni": [1], "cnt": [100]}
     )
 
-    result = get_column_value_examples(db, "NL_SE", "KakuteiJyuni")
+    result = get_column_value_examples(db, "NL_SE", "kakuteijyuni")
 
     assert "error" not in result
     assert result["unique_values"] == [1]
+    assert result["description"] != "説明なし"
     query = db.execute_safe_query.call_args.args[0]
     assert "kakuteijyuni" in query
     assert "!= ''" not in query
@@ -166,6 +167,24 @@ class TestConnectionPostgreSQL:
                 "SELECT * FROM NL_SE WHERE Ninki = %s AND Year = %s"
             )
             assert read_sql.call_args.kwargs["params"] == (1, 2026)
+
+    def test_execute_query_preserves_dollar_quoted_question_marks(self):
+        with patch.dict(os.environ, {"DB_TYPE": "postgresql"}):
+            db = DatabaseConnection()
+            db.connection = MagicMock()
+
+            with patch(
+                "jvlink_mcp_server.database.connection.pd.read_sql_query",
+                return_value=pd.DataFrame(),
+            ) as read_sql:
+                db.execute_query(
+                    "SELECT $$?$$, $body$?$body$ FROM NL_SE WHERE Year = ?",
+                    params=(2026,),
+                )
+
+            assert read_sql.call_args.args[0] == (
+                "SELECT $$?$$, $body$?$body$ FROM NL_SE WHERE Year = %s"
+            )
 
     def test_postgresql_catalog_names_are_canonicalized(self):
         """PostgreSQL folds unquoted jrvltsql table names to lower case."""

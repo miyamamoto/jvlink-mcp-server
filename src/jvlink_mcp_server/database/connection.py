@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from typing import Any, Optional
 import warnings
 import pandas as pd
@@ -19,8 +20,19 @@ def _adapt_qmark_parameters(query: str) -> str:
     """Convert unquoted DB-API qmark placeholders to pg8000 format markers."""
     result = []
     quote = None
+    dollar_quote = None
     index = 0
     while index < len(query):
+        if dollar_quote:
+            if query.startswith(dollar_quote, index):
+                result.append(dollar_quote)
+                index += len(dollar_quote)
+                dollar_quote = None
+            else:
+                result.append(query[index])
+                index += 1
+            continue
+
         char = query[index]
         if quote:
             result.append(char)
@@ -32,6 +44,14 @@ def _adapt_qmark_parameters(query: str) -> str:
                     quote = None
         elif char in ("'", '"'):
             quote = char
+            result.append(char)
+        elif char == "$":
+            match = re.match(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$", query[index:])
+            if match:
+                dollar_quote = match.group(0)
+                result.append(dollar_quote)
+                index += len(dollar_quote)
+                continue
             result.append(char)
         elif char == "?":
             result.append("%s")

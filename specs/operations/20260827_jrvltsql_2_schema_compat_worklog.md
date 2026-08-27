@@ -141,3 +141,33 @@ change the development collector or either PostgreSQL database.
 - `git diff --check` passes. Repository-wide Ruff currently reports 65
   pre-existing style findings and is not configured as the repository test
   gate; no bulk formatting change is included in this iteration.
+
+## Aggregated PR review repair — 2026-08-27
+
+- Six actionable review findings were collected before changing the candidate:
+  parent-sync version surfaces/post-update validation, a Markdown fence,
+  unconfirmed result filtering, PostgreSQL dollar-quoted strings, case-folded
+  column descriptions, and cross-family schema-map pollution.
+- The first compact regression run on candidate
+  `779e4d4f1d4062fd9d47906dceca7e5688d0f9d3` failed exactly five grouped
+  assertions (`5 failed, 21 passed`): lower-case PostgreSQL column description,
+  dollar-quoted question marks, incomplete sync workflow, polluted family maps,
+  and the public result-query/fence contract.
+- After the documentation failure exposed the same `KakuteiJyuni IS NOT NULL`
+  condition in executable query surfaces, the existing contract test was
+  minimally extended across those surfaces. It failed first on
+  `data/feature_importance.json`, proving that the executable/public examples
+  still admitted unconfirmed `KakuteiJyuni = 0` rows.
+- The batched repair now preserves PostgreSQL dollar-quoted text while adapting
+  actual qmark parameters, performs case-insensitive description lookup,
+  applies the 80-table contract only after the three family maps are combined,
+  and uniformly requires `KakuteiJyuni > 0` for result analysis.
+- The parent-sync proposal now updates every version/contract surface, records
+  the exact upstream commit, regenerates `uv.lock`, and runs the full suite plus
+  a package build on the mutated tree before it can commit or push a PR.
+- Post-repair compact result: `26 passed`; `git diff --check` passes. Full
+  candidate validation then passed on both supported interpreters: Python 3.11
+  and isolated Python 3.12.11 each reported `186 passed, 8 skipped`.
+- The mutated workflow parses as YAML, and a fresh `0.7.0` wheel and sdist both
+  build successfully. Actual PostgreSQL smoke, PR-thread closure, and the final
+  exact-SHA gate remain pending.

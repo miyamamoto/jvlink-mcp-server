@@ -43,7 +43,7 @@
       "description": "良馬場・重馬場での適性。馬によって得意不得意が顕著",
       "target_usage": "「馬場状態別成績」で集計",
       "statistical_impact": "重馬場で勝率30%以上の馬は重馬場で特に信頼できる",
-      "sql_example": "SELECT s.KettoNum, r.SibaBabaCD, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni IS NOT NULL GROUP BY s.KettoNum, r.SibaBabaCD"
+      "sql_example": "SELECT s.KettoNum, r.SibaBabaCD, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY s.KettoNum, r.SibaBabaCD"
     },
     {
       "name": "枠番・馬番",
@@ -52,7 +52,7 @@
       "description": "コースによって有利不利がある。内枠有利・外枠有利はコース次第",
       "target_usage": "「枠番別成績」「馬番別成績」で集計",
       "statistical_impact": "東京1600mは内枠有利、新潟外回りは外枠有利など",
-      "sql_example": "SELECT r.JyoCD, r.Kyori, s.Wakuban, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni IS NOT NULL GROUP BY r.JyoCD, r.Kyori, s.Wakuban"
+      "sql_example": "SELECT r.JyoCD, r.Kyori, s.Wakuban, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY r.JyoCD, r.Kyori, s.Wakuban"
     },
     {
       "name": "騎手成績",
@@ -61,7 +61,7 @@
       "description": "騎手の腕前・コース適性。上位騎手の信頼度は高い",
       "target_usage": "「騎手別成績」で集計。特定コースでの成績を確認",
       "statistical_impact": "リーディング上位騎手の勝率は10-15%（平均6-7%）",
-      "sql_example": "SELECT KisyuRyakusyo, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC"
+      "sql_example": "SELECT KisyuRyakusyo, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni > 0 GROUP BY KisyuRyakusyo ORDER BY wins DESC"
     },
     {
       "name": "調教師成績",
@@ -70,7 +70,7 @@
       "description": "調教師の実力・得意パターン",
       "target_usage": "「調教師別成績」で集計",
       "statistical_impact": "上位調教師の勝率は8-12%",
-      "sql_example": "SELECT ChokyosiRyakusyo, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY ChokyosiRyakusyo"
+      "sql_example": "SELECT ChokyosiRyakusyo, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni > 0 GROUP BY ChokyosiRyakusyo"
     },
     {
       "name": "オッズ（人気）",
@@ -88,7 +88,7 @@
       "description": "馬体重の増減。大幅な増減は要注意",
       "target_usage": "「馬体重別成績」で集計",
       "statistical_impact": "±10kg以上の増減は成績低下の傾向。適正体重維持が重要",
-      "sql_example": "SELECT ZogenSa, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE ZogenSa IS NOT NULL AND KakuteiJyuni IS NOT NULL GROUP BY ZogenSa"
+      "sql_example": "SELECT ZogenSa, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE ZogenSa IS NOT NULL AND KakuteiJyuni > 0 GROUP BY ZogenSa"
     },
     {
       "name": "クラス",
@@ -124,7 +124,7 @@
       "description": "馬の年齢。3-5歳が全盛期",
       "target_usage": "「馬齢別成績」で集計",
       "statistical_impact": "3-4歳が最もパフォーマンスが高い。6歳以上は衰え",
-      "sql_example": "SELECT Barei, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE Barei IS NOT NULL AND KakuteiJyuni IS NOT NULL GROUP BY Barei"
+      "sql_example": "SELECT Barei, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE Barei IS NOT NULL AND KakuteiJyuni > 0 GROUP BY Barei"
     },
     {
       "name": "性別",
@@ -133,7 +133,7 @@
       "description": "牡馬・牝馬・セン馬の違い",
       "target_usage": "「性別別成績」で集計",
       "statistical_impact": "牡馬が全体的に優勢だが、牝馬限定戦では牝馬が有利",
-      "sql_example": "SELECT SexCD, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY SexCD"
+      "sql_example": "SELECT SexCD, COUNT(*) AS races, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS wins FROM NL_SE WHERE KakuteiJyuni > 0 GROUP BY SexCD"
     },
     {
       "name": "脚質",
@@ -142,7 +142,7 @@
       "description": "逃げ・先行・差し・追込",
       "target_usage": "通過順位から脚質を判定。「脚質別成績」を分析",
       "statistical_impact": "コースによって有利な脚質が異なる",
-      "sql_example": "SELECT KyakusituKubun, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE KyakusituKubun IS NOT NULL AND KakuteiJyuni IS NOT NULL GROUP BY KyakusituKubun"
+      "sql_example": "SELECT KyakusituKubun, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE KyakusituKubun IS NOT NULL AND KakuteiJyuni > 0 GROUP BY KyakusituKubun"
     },
     {
       "name": "上がり3Fタイム",
@@ -178,7 +178,7 @@
       "description": "騎手込みの負担重量。ハンデ戦では重要",
       "target_usage": "「斤量別成績」で集計",
       "statistical_impact": "ハンデ戦は斤量の影響大。斤量差3kg以上は不利",
-      "sql_example": "SELECT Futan, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE Futan IS NOT NULL AND KakuteiJyuni IS NOT NULL GROUP BY Futan"
+      "sql_example": "SELECT Futan, AVG(KakuteiJyuni) AS AvgJyuni FROM NL_SE WHERE Futan IS NOT NULL AND KakuteiJyuni > 0 GROUP BY Futan"
     }
   ],
   "feature_combinations": [

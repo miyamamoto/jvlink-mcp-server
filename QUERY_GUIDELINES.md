@@ -92,7 +92,7 @@ LIMIT 20
 レース結果のみを対象にする場合：
 
 ```sql
-WHERE KakuteiJyuni IS NOT NULL
+WHERE KakuteiJyuni > 0
 ```
 
 1着のみ：
@@ -135,7 +135,7 @@ LEFT JOIN NL_RA ra ON
     se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
     se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
 WHERE se.Bamei LIKE '%馬名%'
-    AND se.KakuteiJyuni IS NOT NULL
+    AND se.KakuteiJyuni > 0
 ORDER BY se.Year DESC, se.MonthDay DESC
 LIMIT 10
 ```
@@ -150,7 +150,7 @@ SELECT
     ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
 FROM NL_SE se
 WHERE se.KisyuRyakusyo LIKE '%騎手名%'
-    AND se.KakuteiJyuni IS NOT NULL
+    AND se.KakuteiJyuni > 0
     AND se.Year >= 2023
 GROUP BY se.JyoCD
 ORDER BY wins DESC
@@ -170,7 +170,7 @@ JOIN NL_RA ra ON
     se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
     se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
 WHERE se.Ninki = 1  -- 1番人気
-    AND se.KakuteiJyuni IS NOT NULL
+    AND se.KakuteiJyuni > 0
     AND ra.GradeCD IN ('A', 'B', 'C')  -- 重賞のみ
     AND se.Year >= 2023
 GROUP BY ra.GradeCD
@@ -193,7 +193,7 @@ JOIN NL_RA ra ON
 WHERE ra.JyoCD = '05'  -- 東京
     AND ra.TrackCD LIKE '1%'  -- 芝
     AND ra.Kyori = 1600  -- 1600m
-    AND se.KakuteiJyuni IS NOT NULL
+    AND se.KakuteiJyuni > 0
     AND se.Wakuban IS NOT NULL
     AND se.Year >= 2022
 GROUP BY se.Wakuban
@@ -225,7 +225,7 @@ SELECT
     u.Ketto3InfoBamei5 as 母父馬名
 FROM NL_SE s
 LEFT JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL
+WHERE s.KakuteiJyuni > 0
 ```
 
 **マッチング率**: 約85.5%（67,245 / 78,605件）
@@ -240,7 +240,7 @@ SELECT
     ROUND(SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
 FROM NL_SE s
 JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL
+WHERE s.KakuteiJyuni > 0
 GROUP BY u.Ketto3InfoBamei1
 HAVING COUNT(*) >= 100
 ORDER BY 勝利数 DESC

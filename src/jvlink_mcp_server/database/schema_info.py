@@ -254,13 +254,9 @@ TIMESERIES_TABLES = {
     "TS_SOKUHO_O6": {"description": "速報時系列3連単オッズ", "primary_keys": [], "key_columns": {}},
 }
 
-# Apply the stable JRA 2.0 contract to every public table family.
-apply_jrvltsql_2_contract(JVLINK_TABLES)
-apply_jrvltsql_2_contract(REALTIME_TABLES)
-apply_jrvltsql_2_contract(TIMESERIES_TABLES)
-
 # 全テーブルを統合
 ALL_TABLES = {**JVLINK_TABLES, **REALTIME_TABLES, **TIMESERIES_TABLES}
+apply_jrvltsql_2_contract(ALL_TABLES)
 
 TRACK_CODES = {"01": "札幌", "02": "函館", "03": "福島", "04": "新潟", "05": "東京", "06": "中山", "07": "中京", "08": "京都", "09": "阪神", "10": "小倉"}
 
@@ -292,11 +288,11 @@ def get_schema_description():
 
 def get_query_examples():
     return {
-        "1番人気勝率": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE Ninki = 1 AND KakuteiJyuni IS NOT NULL",
-        "騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20",
-        "東京1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE JyoCD = '05' AND Ninki = 1 AND KakuteiJyuni IS NOT NULL",
-        "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni IS NOT NULL GROUP BY Wakuban ORDER BY Wakuban",
-        "種牡馬成績": "SELECT u.Ketto3InfoBamei1 as sire, COUNT(*) as runs, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum = u.KettoNum WHERE s.KakuteiJyuni IS NOT NULL GROUP BY u.Ketto3InfoBamei1 HAVING COUNT(*) >= 100 ORDER BY wins DESC LIMIT 20",
+        "1番人気勝率": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE Ninki = 1 AND KakuteiJyuni > 0",
+        "騎手成績": "SELECT KisyuRyakusyo, COUNT(*) as rides, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni > 0 GROUP BY KisyuRyakusyo ORDER BY wins DESC LIMIT 20",
+        "東京1番人気": "SELECT COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE JyoCD = '05' AND Ninki = 1 AND KakuteiJyuni > 0",
+        "枠番別成績": "SELECT Wakuban, COUNT(*) as total, SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE WHERE KakuteiJyuni > 0 GROUP BY Wakuban ORDER BY Wakuban",
+        "種牡馬成績": "SELECT u.Ketto3InfoBamei1 as sire, COUNT(*) as runs, SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins FROM NL_SE s JOIN NL_UM u ON s.KettoNum = u.KettoNum WHERE s.KakuteiJyuni > 0 GROUP BY u.Ketto3InfoBamei1 HAVING COUNT(*) >= 100 ORDER BY wins DESC LIMIT 20",
         "当日オッズ推移": "SELECT HassoTime, Umaban, TanOdds, TanNinki FROM TS_O1 WHERE Year = 2024 AND MonthDay = 1222 AND JyoCD = '06' AND RaceNum = 11 ORDER BY HassoTime, Umaban",
     }
 

@@ -12,8 +12,16 @@ from jvlink_mcp_server.database.schema_descriptions import (
     get_column_description,
     get_table_description,
 )
-from jvlink_mcp_server.database.schema_info import ALL_TABLES
-from jvlink_mcp_server.database.jrvltsql_2_contract import validate_sqlite_schema
+from jvlink_mcp_server.database.schema_info import (
+    ALL_TABLES,
+    JVLINK_TABLES,
+    REALTIME_TABLES,
+    TIMESERIES_TABLES,
+)
+from jvlink_mcp_server.database.jrvltsql_2_contract import (
+    JRVLTSQL_VERSION,
+    validate_sqlite_schema,
+)
 
 
 # Changed/high-risk keys independently extracted from jrvltsql v2.0.0
@@ -57,6 +65,42 @@ def test_parent_sync_uses_pull_request_not_protected_branch_push():
     assert "gh pr create" in workflow
     assert "gh release download" in workflow
     assert "uv pip install" in workflow
+    for version_surface in (
+        "manifest.json",
+        "src/jvlink_mcp_server/__init__.py",
+        "src/jvlink_mcp_server/database/jrvltsql_2_contract.py",
+        "uv.lock",
+    ):
+        assert version_surface in workflow
+    assert "uv lock" in workflow
+    assert workflow.rfind("uv run pytest -q") > workflow.index("Prepare update tree")
+    assert workflow.rfind("uv build") > workflow.index("Prepare update tree")
+
+
+def test_family_maps_do_not_contain_tables_from_other_families():
+    assert "RT_RA" not in JVLINK_TABLES
+    assert "TS_O1" not in JVLINK_TABLES
+    assert "NL_RA" not in REALTIME_TABLES
+    assert "TS_O1" not in REALTIME_TABLES
+    assert "NL_RA" not in TIMESERIES_TABLES
+    assert "RT_RA" not in TIMESERIES_TABLES
+    assert ALL_TABLES["NL_SE"]["description"] == JVLINK_TABLES["NL_SE"]["description"]
+
+
+def test_public_docs_exclude_unconfirmed_result_rows_and_lint_clean_fence():
+    query_surfaces = (
+        "QUERY_GUIDELINES.md",
+        "data/feature_importance.json",
+        "src/jvlink_mcp_server/database/high_level_api.py",
+        "src/jvlink_mcp_server/database/query_templates.py",
+        "src/jvlink_mcp_server/database/sample_data_provider.py",
+        "src/jvlink_mcp_server/database/schema_info.py",
+    )
+    setup = Path("docs/DATABASE_SETUP.md").read_text(encoding="utf-8")
+    for query_surface in query_surfaces:
+        contents = Path(query_surface).read_text(encoding="utf-8")
+        assert "KakuteiJyuni IS NOT NULL" not in contents, query_surface
+    assert "```\nC:/Users/mitsu/work/jrvltsql" not in setup
 
 
 def test_public_feature_examples_do_not_reference_retired_logical_tables():
@@ -124,7 +168,9 @@ def test_release_versions_and_upstream_lock_are_consistent():
     package_init = Path("src/jvlink_mcp_server/__init__.py").read_text()
     assert manifest_version == project_version
     assert f'__version__ = "{project_version}"' in package_init
-    assert Path(".github/jrvltsql_version.txt").read_text().strip() == "v2.0.0"
+    assert Path(".github/jrvltsql_version.txt").read_text().strip() == (
+        f"v{JRVLTSQL_VERSION}"
+    )
     assert any(
         dependency.startswith("mcp[cli]>=1.21") and "<2" in dependency
         for dependency in project["dependencies"]

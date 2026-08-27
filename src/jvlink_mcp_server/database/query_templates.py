@@ -69,7 +69,7 @@ FROM NL_SE
 WHERE Ninki = {ninki}
   {venue_condition}
   {year_condition}
-  AND KakuteiJyuni IS NOT NULL
+  AND KakuteiJyuni > 0
   AND KakuteiJyuni > 0
 """,
     },
@@ -103,7 +103,7 @@ SELECT
     ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
     ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE
-WHERE KakuteiJyuni IS NOT NULL
+WHERE KakuteiJyuni > 0
   AND KakuteiJyuni > 0
   {jockey_condition}
   {year_condition}
@@ -135,7 +135,7 @@ SELECT
     ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni = 1 THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
     ROUND(100.0 * SUM(CASE WHEN KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE
-WHERE KakuteiJyuni IS NOT NULL
+WHERE KakuteiJyuni > 0
   AND KakuteiJyuni > 0
   {venue_condition}
   {kyori_condition}
@@ -311,7 +311,7 @@ SELECT
     ROUND(100.0 * SUM(CASE WHEN s.KakuteiJyuni <= 3 THEN 1 ELSE 0 END) / COUNT(*), 1) as top3_rate
 FROM NL_SE s
 JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL
+WHERE s.KakuteiJyuni > 0
   AND s.KakuteiJyuni > 0
   AND u.Ketto3InfoBamei1 IS NOT NULL
   AND LENGTH(u.Ketto3InfoBamei1) > 0
@@ -393,7 +393,7 @@ JOIN NL_RA r
   AND s.Nichiji = r.Nichiji
   AND s.RaceNum = r.RaceNum
 WHERE s.Bamei LIKE {horse_name}
-  AND s.KakuteiJyuni IS NOT NULL
+  AND s.KakuteiJyuni > 0
   AND s.KakuteiJyuni > 0
 GROUP BY s.Bamei, r.TrackCD
 ORDER BY total_runs DESC

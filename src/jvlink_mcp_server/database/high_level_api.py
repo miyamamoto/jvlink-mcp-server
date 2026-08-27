@@ -71,7 +71,7 @@ def _favorite_performance_impl(
     conditions.append("s.Ninki = ?")
     query_params.append(ninki)
     condition_desc.append(f"{ninki}番人気")
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.KakuteiJyuni > 0")
 
     if venue:
@@ -184,7 +184,7 @@ def _jockey_stats_impl(
     condition_desc = [f"騎手名: {jockey_name}（部分一致）"]
     conditions.append("s.KisyuRyakusyo LIKE ?")
     query_params.append('%' + jockey_name + '%')
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.KakuteiJyuni > 0")
 
     if venue:
@@ -321,7 +321,7 @@ def get_frame_stats(
     condition_desc = []
 
     # 確定着順がNULLでない（INTEGER型）
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.Wakuban IS NOT NULL")
     conditions.append("s.Wakuban > 0")
@@ -429,7 +429,7 @@ def _horse_history_impl(
 
     conditions = [
         "s.Bamei LIKE ?",
-        "s.KakuteiJyuni IS NOT NULL",
+        "s.KakuteiJyuni > 0",
         "s.KakuteiJyuni > 0",
     ]
     query_params: List = ['%' + horse_name + '%']
@@ -534,7 +534,7 @@ def get_sire_stats(
     query_params.append('%' + sire_name + '%')
 
     # 確定着順がNULLでない（INTEGER型）
-    conditions.append("s.KakuteiJyuni IS NOT NULL")
+    conditions.append("s.KakuteiJyuni > 0")
     conditions.append("s.KakuteiJyuni > 0")
 
     # 競馬場
