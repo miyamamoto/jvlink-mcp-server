@@ -3,7 +3,7 @@
 import os
 import sqlite3
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -149,3 +149,33 @@ def test_engine_bound_provider_isolation_blocks_indirect_nar_reads(
         pytest.raises(ValueError, match="NAR tables are not supported"),
     ):
         database.execute_safe_query(bypass_query)
+
+
+def test_postgresql_role_boundary_rejects_stored_function_escalation() -> None:
+    """A PostgreSQL reader must not execute code that can hide NAR reads."""
+    connection = MagicMock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = (False, False, False, True)
+
+    database = DatabaseConnection()
+    database.db_type = "postgresql"
+    database.connection = connection
+
+    with pytest.raises(ValueError, match="stored functions"):
+        database._assert_postgresql_role_boundary(connection)
+
+
+def test_postgresql_role_boundary_accepts_a_jra_only_reader() -> None:
+    """A non-privileged reader with no NAR access remains supported."""
+    connection = MagicMock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = (False, False, False, False)
+
+    database = DatabaseConnection()
+    database.db_type = "postgresql"
+    database.connection = connection
+    database._assert_postgresql_role_boundary(connection)
+
+    boundary_query = cursor.execute.call_args.args[0]
+    assert "has_table_privilege" in boundary_query
+    assert "has_function_privilege" in boundary_query

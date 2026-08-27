@@ -85,6 +85,12 @@ docker compose --profile duckdb up jvlink-duckdb
 docker compose --profile postgresql up
 ```
 
+新規ボリュームでは、初期化SQLが書込み用`jvlink_writer`とは別に
+JRA専用の`jvlink_mcp_reader`ロールを作成します。既存ボリュームには初期化SQLが
+再適用されないため、データを削除せず、DB管理者が同等の制限ロールを一度作成して
+`DB_READONLY_ROLE`へ指定してください。NAR表または非システムの
+`SECURITY DEFINER`関数へ到達できるロールはMCPが拒否します。
+
 アクセス: `http://localhost:8002/sse`
 
 ## トラブルシューティング

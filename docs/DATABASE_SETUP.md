@@ -159,9 +159,15 @@ ORDER BY se.Year, se.MonthDay
 |--------|------|--------|
 | `DB_TYPE` | データベースの種類 | `sqlite`、`postgresql`、または独自変換済み`duckdb` |
 | `DB_PATH` | データベースファイルのパス | `C:/Users/mitsu/work/jrvltsql/data/keiba.db` |
+| `DB_READONLY_ROLE` | PostgreSQLでMCPが切り替えるJRA専用の制限ロール（接続ユーザー自体が制限readerなら省略可） | `jvlink_mcp_reader` |
 
 DuckDBを使用する場合は、jrvltsqlのSQLite/PostgreSQL出力から別途変換した
 `.duckdb` ファイルを `DB_PATH` に指定してください。
+
+PostgreSQLの`DB_READONLY_ROLE`は、スーパーユーザー・`BYPASSRLS`・テーブル所有者に
+しないでください。JRAテーブルの`SELECT`だけを付与し、NARテーブルの`SELECT`と
+非システム`SECURITY DEFINER`関数の`EXECUTE`を付与しないことが必須です。
+条件を確認できない場合、MCPは安全とみなさず接続を拒否します。
 
 ### 設定例
 

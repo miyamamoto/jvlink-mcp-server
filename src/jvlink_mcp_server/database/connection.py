@@ -163,12 +163,106 @@ class DatabaseConnection:
             host=host, port=port, database=database,
             user=user, password=password
         )
-        # 読み取り専用モードに設定
-        cursor = self.connection.cursor()
-        cursor.execute("SET default_transaction_read_only = on")
-        self.connection.commit()
-        cursor.close()
+        try:
+            # Use an explicitly configured role when the login role is also used
+            # by an importer.  The effective role is validated even when no role
+            # switch is requested, so a superuser/writer login fails closed.
+            self._activate_postgresql_readonly_role(self.connection)
+            cursor = self.connection.cursor()
+            cursor.execute("SET default_transaction_read_only = on")
+            cursor.close()
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            self.connection.close()
+            self.connection = None
+            raise
         return self.connection
+
+    def _activate_postgresql_readonly_role(self, connection) -> None:
+        """Select and validate the effective role used for PostgreSQL reads."""
+        readonly_role = os.getenv("DB_READONLY_ROLE")
+        if readonly_role:
+            validate_identifier(readonly_role, "PostgreSQL read-only role")
+            cursor = connection.cursor()
+            try:
+                cursor.execute(f'SET ROLE "{readonly_role}"')
+            finally:
+                cursor.close()
+        self._assert_postgresql_role_boundary(connection)
+
+    def _assert_postgresql_role_boundary(self, connection) -> None:
+        """Fail unless PostgreSQL permissions enforce the JRA-only boundary.
+
+        SQL text and outer query plans cannot reveal tables read inside a
+        PL/pgSQL or SECURITY DEFINER function.  The effective database role is
+        therefore required to be non-privileged, unable to read NAR relations,
+        and unable to execute non-system SECURITY DEFINER code.
+        """
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    role.rolsuper,
+                    role.rolbypassrls,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_catalog.pg_class AS relation
+                        WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                          AND lower(relation.relname) ~
+                              '^(nar_[a-z0-9_]+|[a-z_][a-z0-9_]*_nar)$'
+                          AND (
+                              has_table_privilege(
+                                  current_user, relation.oid, 'SELECT'
+                              )
+                              OR has_any_column_privilege(
+                                  current_user, relation.oid, 'SELECT'
+                              )
+                          )
+                    ) AS can_read_nar,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_catalog.pg_proc AS routine
+                        JOIN pg_catalog.pg_namespace AS namespace
+                          ON namespace.oid = routine.pronamespace
+                        WHERE routine.prosecdef
+                          AND namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+                          AND namespace.nspname <> 'information_schema'
+                          AND has_function_privilege(
+                              current_user, routine.oid, 'EXECUTE'
+                          )
+                    ) AS can_execute_security_definer
+                FROM pg_catalog.pg_roles AS role
+                WHERE role.rolname = current_user
+                """
+            )
+            boundary = cursor.fetchone()
+        finally:
+            cursor.close()
+
+        if boundary is None:
+            raise ValueError(
+                "Unable to validate the PostgreSQL read-only role."
+            )
+
+        is_superuser, bypasses_rls, can_read_nar, can_execute_definer = boundary
+        if is_superuser or bypasses_rls:
+            raise ValueError(
+                "PostgreSQL provider isolation requires a non-superuser "
+                "read-only role without BYPASSRLS."
+            )
+        if can_read_nar:
+            raise ValueError(
+                "The PostgreSQL read-only role can access NAR tables; revoke "
+                "those privileges before starting JVLink MCP Server."
+            )
+        if can_execute_definer:
+            raise ValueError(
+                "The PostgreSQL read-only role can execute non-system "
+                "SECURITY DEFINER stored functions; revoke EXECUTE before "
+                "starting JVLink MCP Server."
+            )
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
         """SQLクエリを実行してDataFrameで結果を返す
@@ -257,6 +351,10 @@ class DatabaseConnection:
                     )
 
         elif self.db_type == "postgresql":
+            # Re-apply the restricted role for every public query.  This also
+            # repairs a role reset attempted by an earlier statement before any
+            # query is planned or executed.
+            self._activate_postgresql_readonly_role(connection)
             explain_query = query
             if params and "?" in explain_query:
                 explain_query = _adapt_qmark_parameters(explain_query)

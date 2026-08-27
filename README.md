@@ -249,16 +249,31 @@ DB_TYPE=postgresql
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=keiba
-DB_USER=postgres
+DB_USER=jvlink_writer
 DB_PASSWORD=your_password
+DB_READONLY_ROLE=jvlink_mcp_reader
 ```
 
 または接続文字列で指定:
 
 ```
 DB_TYPE=postgresql
-DB_CONNECTION_STRING=host=localhost;port=5432;database=keiba;username=postgres;password=your_password
+DB_CONNECTION_STRING=host=localhost;port=5432;database=keiba;username=jvlink_writer;password=your_password
+DB_READONLY_ROLE=jvlink_mcp_reader
 ```
+
+PostgreSQLでは、書込みユーザーやスーパーユーザーをMCPの実効ロールとして
+使用しないでください。`DB_READONLY_ROLE`には、JRAテーブルだけを`SELECT`できる
+`NOLOGIN NOSUPERUSER NOBYPASSRLS`ロールを指定します。接続ユーザー自体が同じ
+条件を満たす専用readerなら、この変数は省略できます。MCPは各クエリの計画前に
+実効ロールを検証し、NARテーブルを読める場合、または非システムの
+`SECURITY DEFINER`関数を実行できる場合は起動・実行を拒否します。
+
+新規のDocker Compose環境では`docker/postgres-init/10-jvlink-mcp-reader.sql`が
+このロールを作成します。既存PostgreSQLを使う場合は、DB管理者が同等のロールを
+作成してJRAテーブルだけを付与してください。既存データを消す必要はありません。
+混在DBで`GRANT SELECT ON ALL TABLES`を行うとNAR表も付与されてfail closedになるため、
+JRA表を個別に付与するかJRA専用DBを使用してください。
 
 ---
 

@@ -330,3 +330,40 @@ change the development collector or either PostgreSQL database.
   engine-resolved identifier segment. Final Python 3.11.13 and Python 3.12.11
   suites each pass with `192 passed, 8 skipped` across DuckDB 1.4.1 and 1.5.5.
 - Commit/push, exact thread response, CI, merge, and release remain pending.
+
+## PostgreSQL role-bound provider isolation — 2026-08-27
+
+- The exact `e5a7d8ec0ecdc84de7a19134dd6e725a6c51444f` final review found one
+  remaining P1: an outer PostgreSQL plan does not expose relations read inside
+  a non-inlined PL/pgSQL function. A disposable PostgreSQL 16 reproduction
+  distinguished the safe inlined-SQL case from the bypass: the SQL function
+  was rejected by the existing relation-plan gate, while the PL/pgSQL wrapper
+  returned one `NL_RA_NAR` row (`2026`) through a JRA-looking function name.
+- The minimal retained role-bound regression failed red before implementation
+  with two `AttributeError` failures because no permission boundary existed.
+  The repair activates `DB_READONLY_ROLE` before every PostgreSQL public query
+  and validates the effective role from PostgreSQL catalogs. Superuser or
+  `BYPASSRLS` roles, roles with table- or column-level `SELECT` on a
+  NAR-shaped relation, and roles that can execute non-system
+  `SECURITY DEFINER` functions are rejected before planning the caller query.
+  The engine relation-plan gate remains as a second independent boundary.
+- A disposable PostgreSQL 16 post-repair probe passed all paired cases: a
+  callable `SECURITY DEFINER` wrapper was rejected by the role validator; after
+  revoking its public `EXECUTE`, the dedicated reader returned the JRA row and
+  the same wrapper call failed with database permission denied. The focused
+  regression passes (`5 passed`) and the Python 3.11.13 and isolated Python
+  3.12.11 (DuckDB 1.5.5) full suites each pass with
+  `194 passed, 8 skipped`.
+- The packaged PostgreSQL example now separates the writer login from a
+  `NOLOGIN NOSUPERUSER NOBYPASSRLS` MCP reader, grants future jrvltsql tables
+  through writer-owned default privileges, and documents that mixed-provider
+  grants fail closed. Existing volumes are not deleted or rewritten; operators
+  must provision an equivalent role once and set `DB_READONLY_ROLE`.
+- `docker compose config` is valid. A disposable fresh Compose PostgreSQL 16
+  initialization produced a `jvlink_mcp_reader` with `rolsuper=false`,
+  `rolcanlogin=false`, and `rolbypassrls=false`; its dedicated container,
+  network, and volume were then removed. Workflow-equivalent Ruff and
+  `git diff --check` pass.
+- Remaining gate: commit/push the batched repair, resolve the exact review
+  thread, require exact-SHA CI and one terminal review response, then merge and
+  publish `v0.7.0` only if green.
