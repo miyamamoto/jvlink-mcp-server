@@ -19,6 +19,31 @@ _FROM_CLAUSE_END = {
     "EXCEPT",
     "INTERSECT",
 }
+_DYNAMIC_SQL_FUNCTIONS = {
+    "CONNECTBY",
+    "CROSSTAB",
+    "CROSSTAB2",
+    "CROSSTAB3",
+    "CROSSTAB4",
+    "CURSOR_TO_XML",
+    "CURSOR_TO_XMLSCHEMA",
+    "DATABASE_TO_XML",
+    "DATABASE_TO_XML_AND_XMLSCHEMA",
+    "DATABASE_TO_XMLSCHEMA",
+    "DBLINK",
+    "DBLINK_EXEC",
+    "DBLINK_OPEN",
+    "QUERY_TO_XML",
+    "QUERY_TO_XML_AND_XMLSCHEMA",
+    "QUERY_TO_XMLSCHEMA",
+    "SCHEMA_TO_XML",
+    "SCHEMA_TO_XML_AND_XMLSCHEMA",
+    "SCHEMA_TO_XMLSCHEMA",
+    "TABLE_TO_XML",
+    "TABLE_TO_XML_AND_XMLSCHEMA",
+    "TABLE_TO_XMLSCHEMA",
+    "TS_STAT",
+}
 
 
 def validate_identifier(name: str, kind: str = "identifier") -> str:
@@ -97,9 +122,86 @@ def _identifier_value(token: str) -> str:
     return token
 
 
+def _skip_parenthesized(tokens: list[str], index: int) -> int:
+    """Return the first token after a balanced parenthesized expression."""
+    depth = 0
+    while index < len(tokens):
+        if tokens[index] == "(":
+            depth += 1
+        elif tokens[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        index += 1
+    return index
+
+
+def _cte_names(tokens: list[str]) -> set[str]:
+    """Collect CTE identifiers without hiding physical tables in CTE bodies."""
+    names = set()
+    for start, token in enumerate(tokens):
+        if _identifier_value(token).upper() != "WITH":
+            continue
+
+        index = start + 1
+        if (
+            index < len(tokens)
+            and _identifier_value(tokens[index]).upper() == "RECURSIVE"
+        ):
+            index += 1
+
+        while index < len(tokens):
+            name_token = tokens[index]
+            if name_token in {"(", ")", ".", ","}:
+                break
+            name = _identifier_value(name_token)
+            index += 1
+
+            if index < len(tokens) and tokens[index] == "(":
+                index = _skip_parenthesized(tokens, index)
+            if (
+                index >= len(tokens)
+                or _identifier_value(tokens[index]).upper() != "AS"
+            ):
+                break
+            index += 1
+
+            if index < len(tokens):
+                modifier = _identifier_value(tokens[index]).upper()
+                if modifier == "NOT":
+                    index += 1
+                    if (
+                        index >= len(tokens)
+                        or _identifier_value(tokens[index]).upper()
+                        != "MATERIALIZED"
+                    ):
+                        break
+                    index += 1
+                elif modifier == "MATERIALIZED":
+                    index += 1
+
+            if index >= len(tokens) or tokens[index] != "(":
+                break
+            names.add(name.casefold())
+            index = _skip_parenthesized(tokens, index)
+            if index >= len(tokens) or tokens[index] != ",":
+                break
+            index += 1
+    return names
+
+
+def _called_functions(query: str):
+    """Yield function identifiers while ignoring literal and comment text."""
+    tokens = _SQL_TOKEN_RE.findall(_mask_sql_literals_and_comments(query))
+    for index, token in enumerate(tokens[:-1]):
+        if token not in {"(", ")", ".", ","} and tokens[index + 1] == "(":
+            yield _identifier_value(token)
+
+
 def _referenced_tables(query: str):
     """Yield table identifiers appearing in FROM/JOIN positions."""
     tokens = _SQL_TOKEN_RE.findall(_mask_sql_literals_and_comments(query))
+    cte_names = _cte_names(tokens)
     in_from_clause = False
     expect_table = False
     only_modifier = False
@@ -133,14 +235,18 @@ def _referenced_tables(query: str):
                 continue
             if token not in {".", ",", ")"}:
                 table_token = token
-                if (
+                qualified = False
+                while (
                     index + 2 < len(tokens)
                     and tokens[index + 1] == "."
                     and tokens[index + 2] not in {".", ",", "(", ")"}
                 ):
                     table_token = tokens[index + 2]
                     index += 2
-                yield _identifier_value(table_token)
+                    qualified = True
+                table_name = _identifier_value(table_token)
+                if qualified or table_name.casefold() not in cte_names:
+                    yield table_name
                 expect_table = False
                 only_modifier = False
         elif in_from_clause and token == ",":
@@ -151,6 +257,12 @@ def _referenced_tables(query: str):
 
 def reject_unsupported_nar_table_reference(query: str) -> None:
     """Reject SQL that refers to a physical NAR provider table."""
+    if any(
+        function.upper() in _DYNAMIC_SQL_FUNCTIONS
+        or function.upper().startswith("DBLINK_")
+        for function in _called_functions(query)
+    ):
+        raise ValueError("Server-side dynamic SQL functions are not permitted.")
     if any(
         _NAR_TABLE_NAME_RE.fullmatch(table) for table in _referenced_tables(query)
     ):

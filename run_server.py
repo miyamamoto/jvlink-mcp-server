@@ -17,7 +17,8 @@ from pathlib import Path
 # Dependencies with version constraints
 REQUIRED_PACKAGES = [
     "duckdb>=1.1.0",
-    "mcp[cli]>=1.1.0",
+    "mcp[cli]>=1.21.0,<2",
+    "packaging>=25.0",
     "pandas>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
@@ -25,6 +26,7 @@ REQUIRED_PACKAGES = [
 # Key native modules to test import (if these work, everything should work)
 TEST_IMPORTS = [
     "pydantic_core._pydantic_core",
+    "mcp.server.fastmcp",
     "duckdb",
     "pandas",
 ]

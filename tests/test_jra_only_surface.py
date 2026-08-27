@@ -89,5 +89,26 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
 
     reject_unsupported_nar_table_reference("SELECT * FROM ONLY (NL_RA)")
 
+    with pytest.raises(ValueError, match="NAR tables are not supported"):
+        reject_unsupported_nar_table_reference(
+            "SELECT * FROM memory.main.NL_RA_NAR"
+        )
+
+    reject_unsupported_nar_table_reference(
+        "WITH NL_RA_NAR AS (SELECT * FROM NL_RA) SELECT * FROM NL_RA_NAR"
+    )
+    with pytest.raises(ValueError, match="NAR tables are not supported"):
+        reject_unsupported_nar_table_reference(
+            "WITH JRA_ROWS AS (SELECT * FROM NL_RA_NAR) SELECT * FROM JRA_ROWS"
+        )
+
+    with pytest.raises(ValueError, match="dynamic SQL"):
+        reject_unsupported_nar_table_reference(
+            "SELECT query_to_xml('SELECT * FROM NL_RA_NAR', true, false, '')"
+        )
+    reject_unsupported_nar_table_reference(
+        "SELECT 'query_to_xml(' AS documentation FROM NL_RA"
+    )
+
     table_validation = server.validate_sql_query("TABLE NL_RA_NAR")
     assert table_validation["unsupported_provider_table"] is True

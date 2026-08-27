@@ -266,3 +266,40 @@ change the development collector or either PostgreSQL database.
   and their archive structure was inspected successfully. Final commit/push,
   review-thread closure, CI, merge, and the `v0.7.0` release gate remain
   pending.
+
+## Exact `2215ea7` final-review closure — 2026-08-27
+
+- CI passed all six Python 3.11/3.12 test and lint jobs on exact
+  `2215ea73307d76996485a104050cef710987746c`; CodeRabbit also completed
+  successfully. The requested exact-SHA Codex review then found two P1 and one
+  P2 boundary, while CodeRabbit added one provider-isolation bypass and one
+  public-query correction. All five were verified against current code before
+  implementation.
+- A compact red-first update reported `3 failed, 26 passed`: DuckDB's legal
+  `catalog.schema.NL_RA_NAR` reference was allowed, the `枠番・馬番` example
+  omitted `Umaban`, and the MCPB bootstrap omitted `packaging`. Direct bounded
+  probes additionally recorded that a NAR-shaped CTE alias was incorrectly
+  rejected and PostgreSQL `query_to_xml()` carrying NAR SQL was allowed.
+- The batched repair consumes every qualification segment and validates the
+  final physical table, distinguishes unqualified CTE names while still
+  scanning their bodies, and rejects server-side dynamic SQL/table accessors
+  (PostgreSQL XML mapping, dblink, tablefunc, and `ts_stat`) after masking inert
+  literals/comments. The query example now selects/groups both `Wakuban` and
+  `Umaban`, and the MCPB bootstrap explicitly installs `packaging`.
+- A clean bootstrap probe then found an adjacent release blocker not visible
+  under normal `uv sync`: `run_server.py` installed unconstrained MCP 2.x and
+  failed importing `FastMCP`. Its minimal contract failed red on
+  `assert '<2' in 'mcp[cli]>=1.1.0'`. The bootstrap now matches the project
+  contract (`mcp[cli]>=1.21.0,<2`) and verifies `mcp.server.fastmcp` rather than
+  accepting an incompatible installation.
+- Post-repair focused result is `29 passed`. Independent runtime probes confirm
+  DuckDB accepts the three-part syntax but the MCP guard rejects its NAR target;
+  actual PostgreSQL accepts a JRA-only NAR-shaped CTE alias while rejecting
+  dynamic NAR SQL before execution. A fresh isolated bootstrap installed MCP
+  1.x plus `packaging`, imported the server, and exposed 22 tools. A fresh
+  workflow-equivalent MCPB validates and builds as `jvlink-mcp-server-0.7.0.mcpb`
+  with 30 files and no bundled runtime dependencies.
+- Final Python 3.11.13 and isolated Python 3.12.11 suites each pass with
+  `190 passed, 8 skipped`; the workflow Ruff selection and `git diff --check`
+  pass. Commit/push, five thread responses, unresolved-thread and CI gates,
+  merge, and release remain pending.

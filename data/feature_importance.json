@@ -52,7 +52,7 @@
       "description": "コースによって有利不利がある。内枠有利・外枠有利はコース次第",
       "target_usage": "「枠番別成績」「馬番別成績」で集計",
       "statistical_impact": "東京1600mは内枠有利、新潟外回りは外枠有利など",
-      "sql_example": "SELECT r.JyoCD, r.Kyori, s.Wakuban, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY r.JyoCD, r.Kyori, s.Wakuban"
+      "sql_example": "SELECT r.JyoCD, r.Kyori, s.Wakuban, s.Umaban, AVG(s.KakuteiJyuni) AS AvgJyuni FROM NL_SE s JOIN NL_RA r ON s.Year=r.Year AND s.MonthDay=r.MonthDay AND s.JyoCD=r.JyoCD AND s.Kaiji=r.Kaiji AND s.Nichiji=r.Nichiji AND s.RaceNum=r.RaceNum WHERE s.KakuteiJyuni > 0 GROUP BY r.JyoCD, r.Kyori, s.Wakuban, s.Umaban"
     },
     {
       "name": "騎手成績",

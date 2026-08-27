@@ -1,6 +1,7 @@
 """Public contracts that must match the stable jrvltsql 2.0.0 schema."""
 
 import json
+import runpy
 import sqlite3
 import tomllib
 from pathlib import Path
@@ -122,6 +123,38 @@ def test_public_docs_exclude_unconfirmed_result_rows_and_lint_clean_fence():
         elif "SUM(CASE WHEN KakuteiJyuni = 1" in sql_example:
             assert "KakuteiJyuni > 0" in sql_example, feature["name"]
     assert "```\nC:/Users/mitsu/work/jrvltsql" not in setup
+
+
+def test_feature_example_matches_wakuban_and_umaban_label():
+    feature_data = json.loads(
+        Path("data/feature_importance.json").read_text(encoding="utf-8")
+    )
+    feature = next(
+        item
+        for item in feature_data["important_features"]
+        if item["name"] == "枠番・馬番"
+    )
+    select_clause, group_by_clause = feature["sql_example"].split(" GROUP BY ")
+    assert "s.Wakuban" in select_clause
+    assert "s.Umaban" in select_clause
+    assert "s.Wakuban" in group_by_clause
+    assert "s.Umaban" in group_by_clause
+
+
+def test_mcpb_bootstrap_installs_runtime_version_dependency():
+    bootstrap = runpy.run_path("run_server.py")
+    required_packages = bootstrap["REQUIRED_PACKAGES"]
+    assert any(
+        requirement.startswith("packaging")
+        for requirement in required_packages
+    )
+    mcp_requirement = next(
+        requirement
+        for requirement in required_packages
+        if requirement.startswith("mcp[")
+    )
+    assert "<2" in mcp_requirement
+    assert "mcp.server.fastmcp" in bootstrap["TEST_IMPORTS"]
 
 
 def test_public_feature_examples_do_not_reference_retired_logical_tables():
