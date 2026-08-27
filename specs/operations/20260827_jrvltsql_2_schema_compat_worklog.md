@@ -171,3 +171,12 @@ change the development collector or either PostgreSQL database.
 - The mutated workflow parses as YAML, and a fresh `0.7.0` wheel and sdist both
   build successfully. Actual PostgreSQL smoke, PR-thread closure, and the final
   exact-SHA gate remain pending.
+- The review repair was committed as code candidate
+  `00052aa8bb0baf6d1f7b9b5073a4915f1eadcdf9`. Its read-only MCP stdio probe
+  against the mixed-provider development PostgreSQL passed: 22 tools, exactly
+  80 exposed JRA tables, no exposed NAR table, 103 `NL_SE` columns, a positive
+  confirmed-result count, and explicit `NL_RA_NAR` rejection. The first two
+  harness attempts were discarded: one sourced a non-shell env file and one
+  used the container port instead of the published host port; neither changed
+  the database, and the successful probe loaded dotenv without logging values.
+- PR-thread closure and the final exact-SHA CI/review gate remain pending.
