@@ -15,6 +15,44 @@ JRVLTSQL_GIT_SHA = "4d3a89b382bb0a0b788d68093bc16f0f8dd950f5"
 
 RACE = ("Year", "MonthDay", "JyoCD", "Kaiji", "Nichiji", "RaceNum")
 
+# Columns read directly by the public high-level analysis APIs. Primary-key
+# identity alone is insufficient for the automated upstream compatibility
+# gate: a renamed result or grouping column would otherwise pass the gate and
+# fail only after the generated support PR was merged.
+JRVLTSQL_2_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
+    "NL_RA": {
+        "Year": "INTEGER",
+        "MonthDay": "INTEGER",
+        "JyoCD": "TEXT",
+        "Kaiji": "INTEGER",
+        "Nichiji": "INTEGER",
+        "RaceNum": "INTEGER",
+        "Hondai": "TEXT",
+        "GradeCD": "TEXT",
+        "Kyori": "INTEGER",
+    },
+    "NL_SE": {
+        "Year": "INTEGER",
+        "MonthDay": "INTEGER",
+        "JyoCD": "TEXT",
+        "Kaiji": "INTEGER",
+        "Nichiji": "INTEGER",
+        "RaceNum": "INTEGER",
+        "Wakuban": "INTEGER",
+        "Umaban": "INTEGER",
+        "KettoNum": "TEXT",
+        "Bamei": "TEXT",
+        "KisyuRyakusyo": "TEXT",
+        "KakuteiJyuni": "INTEGER",
+        "Time": "REAL",
+        "Ninki": "INTEGER",
+    },
+    "NL_UM": {
+        "KettoNum": "TEXT",
+        "Ketto3InfoBamei1": "TEXT",
+    },
+}
+
 JRVLTSQL_2_PRIMARY_KEYS: dict[str, tuple[str, ...]] = {
     "NL_AV": (*RACE, "Umaban"),
     "NL_BN": ("BanusiCode",),
@@ -151,6 +189,7 @@ def validate_sqlite_schema(
                 errors.append(f"{table_name}: table missing")
                 continue
             rows = connection.execute(f'PRAGMA table_info("{actual_name}")').fetchall()
+            actual_columns = {row[1].casefold(): (row[1], row[2].upper()) for row in rows}
             actual_key = [
                 row[1]
                 for row in sorted(rows, key=lambda row: row[5] or 10**6)
@@ -161,4 +200,19 @@ def validate_sqlite_schema(
                     f"{table_name}: primary key mismatch: "
                     f"expected {list(expected_key)!r}, got {actual_key!r}"
                 )
+            for column_name, expected_type in JRVLTSQL_2_REQUIRED_COLUMNS.get(
+                table_name, {}
+            ).items():
+                actual_column = actual_columns.get(column_name.casefold())
+                if actual_column is None:
+                    errors.append(
+                        f"{table_name}: required column missing: {column_name}"
+                    )
+                    continue
+                actual_column_name, actual_type = actual_column
+                if actual_type != expected_type:
+                    errors.append(
+                        f"{table_name}.{actual_column_name}: type mismatch: "
+                        f"expected {expected_type}, got {actual_type or '<empty>'}"
+                    )
     return errors

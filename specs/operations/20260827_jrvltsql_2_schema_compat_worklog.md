@@ -197,3 +197,24 @@ change the development collector or either PostgreSQL database.
   popularity, and sire groupings.
 - Focused post-repair result: `44 passed`. A final commit, both full Python
   suites, CI, thread closure, and clean exact-SHA gate remain pending.
+
+## Second final-review closure — 2026-08-27
+
+- The exact `70419fb33d445caa613d4bb320eece8ad2dcefc0` review identified two
+  remaining P2 classes: the automated upstream gate checked only table/primary
+  key identity, and the NAR guard searched literals/comments/aliases instead of
+  physical table-reference positions.
+- Both compact regressions were confirmed red before production changes
+  (`2 failed`): a schema with `NL_SE.KakuteiJyuni TEXT` and no `Ninki` returned
+  no errors, while `SELECT 'NL_RA_NAR' AS source FROM NL_RA` raised the NAR
+  rejection.
+- The upstream contract now validates the SQLite names/types of the columns
+  directly consumed by public high-level APIs in `NL_RA`, `NL_SE`, and `NL_UM`,
+  in addition to the complete 80-table primary-key registry. A freshly
+  downloaded official `jrvltsql v2.0.0` wheel generated a new 80-table SQLite
+  database and passed the expanded validator.
+- NAR rejection now lexes `FROM`/`JOIN` table positions after masking SQL
+  string/dollar literals and comments. Direct physical NAR references still
+  fail; the same token in a result literal, alias, or comment remains valid.
+- Focused post-repair result: `39 passed`. Final full suites, commit, CI,
+  review/thread closure, and release gate remain pending.

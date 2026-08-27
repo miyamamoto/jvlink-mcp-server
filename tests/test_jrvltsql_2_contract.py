@@ -154,21 +154,38 @@ def test_executable_python_does_not_reference_retired_logical_tables():
 def test_upstream_schema_validator_can_reject_and_accept(tmp_path):
     database_path = tmp_path / "schema.db"
     with sqlite3.connect(database_path) as connection:
-        connection.execute("CREATE TABLE NL_SE (Year INTEGER PRIMARY KEY, KettoNum TEXT)")
+        connection.execute(
+            "CREATE TABLE TEST_TABLE (Year INTEGER PRIMARY KEY, KettoNum TEXT)"
+        )
 
-    expected = {"NL_SE": ("Year", "KettoNum")}
+    expected = {"TEST_TABLE": ("Year", "KettoNum")}
     errors = validate_sqlite_schema(database_path, expected)
     assert errors == [
-        "NL_SE: primary key mismatch: expected ['Year', 'KettoNum'], got ['Year']"
+        "TEST_TABLE: primary key mismatch: expected ['Year', 'KettoNum'], got ['Year']"
     ]
 
     with sqlite3.connect(database_path) as connection:
-        connection.execute("DROP TABLE NL_SE")
+        connection.execute("DROP TABLE TEST_TABLE")
         connection.execute(
-            "CREATE TABLE NL_SE (Year INTEGER, KettoNum TEXT, PRIMARY KEY (Year, KettoNum))"
+            "CREATE TABLE TEST_TABLE (Year INTEGER, KettoNum TEXT, "
+            "PRIMARY KEY (Year, KettoNum))"
         )
 
     assert validate_sqlite_schema(database_path, expected) == []
+
+
+def test_upstream_schema_validator_rejects_required_non_key_drift(tmp_path):
+    database_path = tmp_path / "required-columns.db"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "CREATE TABLE NL_SE (Year INTEGER PRIMARY KEY, KakuteiJyuni TEXT)"
+        )
+
+    errors = validate_sqlite_schema(database_path, {"NL_SE": ("Year",)})
+    assert "NL_SE: required column missing: Ninki" in errors
+    assert (
+        "NL_SE.KakuteiJyuni: type mismatch: expected INTEGER, got TEXT" in errors
+    )
 
 
 def test_release_versions_and_upstream_lock_are_consistent():

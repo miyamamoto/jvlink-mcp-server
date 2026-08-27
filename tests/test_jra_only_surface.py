@@ -45,6 +45,15 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
         with DatabaseConnection() as database:
             assert database.get_tables() == ["NL_RA"]
             assert database.execute_safe_query("SELECT COUNT(*) FROM NL_RA").iloc[0, 0] == 0
+            assert database.execute_safe_query(
+                "SELECT 'NL_RA_NAR' AS source FROM NL_RA"
+            ).empty
+            assert database.execute_safe_query(
+                "SELECT COUNT(*) FROM NL_RA -- NL_RA_NAR is unsupported"
+            ).iloc[0, 0] == 0
+            assert database.execute_safe_query(
+                "SELECT COUNT(*) AS NL_RA_NAR FROM NL_RA"
+            ).iloc[0, 0] == 0
             with pytest.raises(ValueError, match="not a supported JRA table"):
                 database.get_table_schema("NL_RA_NAR")
             with pytest.raises(ValueError, match="NAR tables are not supported"):
@@ -54,3 +63,9 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
     assert validation["can_execute"] is False
     assert validation["unsupported_provider_table"] is True
     assert "NAR" in validation["recommendation"]
+
+    literal_validation = server.validate_sql_query(
+        "SELECT 'NL_RA_NAR' AS source FROM NL_RA"
+    )
+    assert literal_validation["can_execute"] is True
+    assert literal_validation["unsupported_provider_table"] is False
