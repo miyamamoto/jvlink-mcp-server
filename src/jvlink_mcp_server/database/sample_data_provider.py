@@ -61,13 +61,16 @@ def get_sample_data(
 
     # テーブル名のホワイトリスト検証
     valid_tables = db_connection.get_tables()
-    if table_name not in valid_tables:
+    valid_table_lookup = {name.casefold(): name for name in valid_tables}
+    actual_table_name = valid_table_lookup.get(table_name.casefold())
+    if actual_table_name is None:
         return {
             "table_name": table_name,
             "error": f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}",
             "columns": [],
             "sample_rows": [],
         }
+    table_name = actual_table_name
 
     cache_key = f"{table_name}_{num_rows}_{where_clause}"
 
@@ -81,8 +84,15 @@ def get_sample_data(
         # カラム名をスキーマ情報でホワイトリスト検証
         try:
             schema_df = db_connection.get_table_schema(table_name)
-            valid_columns = set(schema_df["column_name"].tolist())
-            verified_cols = [c for c in important_cols if c in valid_columns]
+            valid_columns = {
+                str(column).casefold(): str(column)
+                for column in schema_df["column_name"].tolist()
+            }
+            verified_cols = [
+                valid_columns[column.casefold()]
+                for column in important_cols
+                if column.casefold() in valid_columns
+            ]
             columns_str = ", ".join(verified_cols) if verified_cols else "*"
         except Exception:
             columns_str = "*"
@@ -96,8 +106,8 @@ def get_sample_data(
         sql += f" WHERE {where_clause}"
 
     # 結果データがあるレコードを優先（NL_SE系の場合）— INTEGER型なので > 0 で比較
-    if table_name in ("NL_SE", "NL_SE_NAR"):
-        sql += " AND KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0" if where_clause else " WHERE KakuteiJyuni IS NOT NULL AND KakuteiJyuni > 0"
+    if table_name == "NL_SE":
+        sql += " AND KakuteiJyuni > 0" if where_clause else " WHERE KakuteiJyuni > 0"
 
     sql += f" LIMIT {num_rows}"
 
@@ -153,13 +163,20 @@ def get_column_value_examples(
 
     # テーブル名・カラム名のホワイトリスト検証
     valid_tables = db_connection.get_tables()
-    if table_name not in valid_tables:
+    valid_table_lookup = {name.casefold(): name for name in valid_tables}
+    actual_table_name = valid_table_lookup.get(table_name.casefold())
+    if actual_table_name is None:
         return {"table_name": table_name, "column_name": column_name, "error": f"テーブル '{table_name}' は存在しません。"}
+    table_name = actual_table_name
 
     try:
         schema_df = db_connection.get_table_schema(table_name)
-        valid_columns = set(schema_df["column_name"].tolist())
-        if column_name not in valid_columns:
+        valid_columns = {
+            str(column).casefold(): str(column)
+            for column in schema_df["column_name"].tolist()
+        }
+        actual_column_name = valid_columns.get(column_name.casefold())
+        if actual_column_name is None:
             return {"table_name": table_name, "column_name": column_name, "error": f"カラム '{column_name}' は存在しません。"}
     except Exception as e:
         return {"table_name": table_name, "column_name": column_name, "error": str(e)}
@@ -169,10 +186,10 @@ def get_column_value_examples(
 
     # ユニーク値取得
     sql = f"""
-    SELECT {column_name}, COUNT(*) as cnt
+    SELECT {actual_column_name}, COUNT(*) as cnt
     FROM {table_name}
-    WHERE {column_name} IS NOT NULL AND {column_name} != ''
-    GROUP BY {column_name}
+    WHERE {actual_column_name} IS NOT NULL
+    GROUP BY {actual_column_name}
     ORDER BY cnt DESC
     LIMIT {limit}
     """
@@ -183,7 +200,7 @@ def get_column_value_examples(
         return {
             "table_name": table_name,
             "column_name": column_name,
-            "unique_values": df[column_name].tolist(),
+            "unique_values": df[actual_column_name].tolist(),
             "value_counts": df.to_dict(orient="records"),
             "description": _get_column_description(table_name, column_name),
         }
@@ -214,7 +231,7 @@ def get_data_snapshot(db_connection) -> Dict[str, Any]:
     }
 
     # 各テーブルのレコード数を取得
-    for table_name in ["NL_RA", "NL_SE", "NL_UM", "NL_KS", "NL_CH", "NL_HR", "NL_O1", "NL_RA_NAR", "NL_SE_NAR"]:
+    for table_name in ["NL_RA", "NL_SE", "NL_UM", "NL_KS", "NL_CH", "NL_HR", "NL_O1"]:
         try:
             count_sql = f"SELECT COUNT(*) as cnt FROM {table_name}"
             df = db_connection.execute_safe_query(count_sql)
@@ -234,7 +251,7 @@ def get_data_snapshot(db_connection) -> Dict[str, Any]:
             MIN(Year || '-' || MonthDay) as earliest,
             MAX(Year || '-' || MonthDay) as latest
         FROM NL_SE
-        WHERE KakuteiJyuni IS NOT NULL
+        WHERE KakuteiJyuni > 0
         """
         df = db_connection.execute_safe_query(period_sql)
         if not df.empty:
@@ -288,7 +305,7 @@ def _get_data_format_notes(table_name: str) -> List[str]:
     """データ形式の注意事項を取得"""
 
     common_notes = [
-        "jrvltsql v1.1.0以降: 数値カラム（Year, Ninki, KakuteiJyuni等）はINTEGER型",
+        "jrvltsql 2.0.0: 数値カラム（Year, Ninki, KakuteiJyuni等）はINTEGER型",
         "コード系カラム（JyoCD, GradeCD等）はTEXT型のまま",
     ]
 
@@ -315,7 +332,15 @@ def _get_data_format_notes(table_name: str) -> List[str]:
 def _get_column_description(table_name: str, column_name: str) -> str:
     """カラムの説明を取得"""
     descriptions = _get_column_info(table_name)
-    return descriptions.get(column_name, "説明なし")
+    canonical_name = column_name.casefold()
+    return next(
+        (
+            description
+            for candidate_name, description in descriptions.items()
+            if candidate_name.casefold() == canonical_name
+        ),
+        "説明なし",
+    )
 
 
 def _get_table_description(table_name: str) -> str:

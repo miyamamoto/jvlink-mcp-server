@@ -4,7 +4,88 @@
 全410+カラムを網羅的にカバーします。
 """
 
-import re
+import re as _re
+
+
+class _CaseInsensitiveText(str):
+    """String view used to match PostgreSQL-folded identifiers."""
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.casefold() == other.casefold()
+        return NotImplemented
+
+    __hash__ = str.__hash__
+
+    def __contains__(self, value):
+        if isinstance(value, str):
+            return value.casefold() in self.casefold()
+        return super().__contains__(value)
+
+    def startswith(self, prefix, start=0, end=None):
+        text = self.casefold()
+        prefixes = prefix if isinstance(prefix, tuple) else (prefix,)
+        folded = tuple(value.casefold() for value in prefixes)
+        if end is None:
+            return text.startswith(folded, start)
+        return text.startswith(folded, start, end)
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        return _CaseInsensitiveText(value) if isinstance(value, str) else value
+
+    def replace(self, old, new, count=-1):
+        replacements = max(count, 0)
+        value = _re.sub(
+            _re.escape(old), new, self, count=replacements, flags=_re.IGNORECASE
+        )
+        return _CaseInsensitiveText(value)
+
+    def split(self, sep=None, maxsplit=-1):
+        return [
+            _CaseInsensitiveText(value)
+            for value in super().split(sep, maxsplit)
+        ]
+
+
+class _CaseInsensitiveMatch:
+    def __init__(self, match):
+        self._match = match
+
+    def __bool__(self):
+        return self._match is not None
+
+    def group(self, *groups):
+        value = self._match.group(*groups)
+        if isinstance(value, tuple):
+            return tuple(
+                _CaseInsensitiveText(item) if isinstance(item, str) else item
+                for item in value
+            )
+        return _CaseInsensitiveText(value) if isinstance(value, str) else value
+
+
+class _CaseInsensitiveRegex:
+    @staticmethod
+    def match(pattern, string, flags=0):
+        match = _re.match(pattern, string, flags | _re.IGNORECASE)
+        return _CaseInsensitiveMatch(match) if match else None
+
+    @staticmethod
+    def search(pattern, string, flags=0):
+        match = _re.search(pattern, string, flags | _re.IGNORECASE)
+        return _CaseInsensitiveMatch(match) if match else None
+
+
+re = _CaseInsensitiveRegex()
+
+
+def _casefold_lookup(mapping, key, default=None):
+    key_folded = str(key).casefold()
+    for name, value in mapping.items():
+        if isinstance(name, str) and name.casefold() == key_folded:
+            return value
+    return default
 
 
 # カラム名パターンマッチング関数
@@ -18,38 +99,36 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     Returns:
         カラムの説明（推測も含む）
     """
-    col = column_name
+    col = _CaseInsensitiveText(column_name)
 
     # === 共通ヘッダー項目 ===
-    if col == "RecordSpec" or col == "headRecordSpec":
+    if col == "RecordSpec":
         return "レコード種別ID（例：RA, SE, HR等）"
-    if col == "DataKubun" or col == "headDataKubun":
+    if col == "DataKubun":
         return "データ区分（1=通常, 2=削除, 9=WIN5等）"
-    if col == "MakeDate" or col == "headMakeDate":
+    if col == "MakeDate":
         return "データ作成年月日（YYYYMMDD形式）"
     if col == "RecordDelimiter":
         return "レコード区切り（改行コード）"
 
-    # === 識別子（id*または直接名） ===
-    if col == "Year" or col == "idYear":
+    # === jrvltsql 2.0 識別子 ===
+    if col == "Year":
         return "開催年（YYYY形式）"
-    if col == "MonthDay" or col == "idMonthDay":
+    if col == "MonthDay":
         return "開催月日（MMDD形式）"
-    if col == "JyoCD" or col == "idJyoCD":
-        if table_name.endswith("_NAR"):
-            return "地方競馬場コード（30=門別, 35=盛岡, 36=水沢, 42=浦和, 43=船橋, 44=大井, 45=川崎, 46=金沢, 47=笠松, 48=名古屋, 49=園田, 50=姫路, 53=高知, 54=佐賀）"
+    if col == "JyoCD":
         return "競馬場コード（01=札幌, 02=函館, 03=福島, 04=新潟, 05=東京, 06=中山, 07=中京, 08=京都, 09=阪神, 10=小倉）"
-    if col == "Kaiji" or col == "idKaiji":
+    if col == "Kaiji":
         return "開催回次（第何回開催か）"
-    if col == "Nichiji" or col == "idNichiji":
+    if col == "Nichiji":
         return "開催日次（何日目か）"
-    if col == "RaceNum" or col == "idRaceNum":
+    if col == "RaceNum":
         return "レース番号（1-12）"
-    if col == "idUmaban" or col == "Umaban":
+    if col == "Umaban":
         return "馬番"
 
     # === NL_HR/RT_HR: 払戻配当配列（先頭は番号なし＝1件目、以降は2始まりの実番号） ===
-    if table_name.replace("_NAR", "") in ("NL_HR", "RT_HR"):
+    if table_name in ("NL_HR", "RT_HR"):
         hr_bet = {
             "Tan": "単勝", "Fuku": "複勝", "Waku": "枠連", "Umaren": "馬連",
             "Wide": "ワイド", "Umatan": "馬単", "Sanrenfuku": "3連複",
@@ -59,9 +138,12 @@ def generate_column_description(table_name: str, column_name: str) -> str:
         hr_match = re.match(
             r'(Tan|Fuku|Waku|Umaren|Wide|Umatan|Sanrenfuku|Sanrentan)'
             r'(Umaban|Kumi|Pay|Ninki)(\d*)$', col)
-        if hr_match and hr_match.group(1) in hr_bet:
+        if hr_match and _casefold_lookup(hr_bet, hr_match.group(1)):
             idx = int(hr_match.group(3)) if hr_match.group(3) else 1
-            return f"{hr_bet[hr_match.group(1)]}{idx}件目の{hr_field[hr_match.group(2)]}"
+            return (
+                f"{_casefold_lookup(hr_bet, hr_match.group(1))}{idx}件目の"
+                f"{_casefold_lookup(hr_field, hr_match.group(2))}"
+            )
 
     # === レース情報（RaceInfo*） ===
     if col.startswith("RaceInfo"):
@@ -1027,7 +1109,7 @@ def generate_column_description(table_name: str, column_name: str) -> str:
     if col == "HaronTime10Total":
         return "10ハロンタイム合計"
     if col.startswith("LapTime_"):
-        return f"ラップタイム（{col.replace('LapTime_', '')}）"
+        return f"ラップタイム（{col.replace('LapTime_', '').upper()}）"
 
     # === 売上・販売情報 ===
     if col == "SaleHostName":
@@ -1264,19 +1346,8 @@ def generate_column_description(table_name: str, column_name: str) -> str:
         num = int(saikin_match.group(1)) + 1
         field = saikin_match.group(2)
 
-        # IDフィールド（SaikinJyusyoidYear等）
-        if field.startswith("SaikinJyusyoid"):
-            id_part = field.replace("SaikinJyusyoid", "")
-            id_map = {
-                "Year": "開催年",
-                "MonthDay": "開催月日",
-                "JyoCD": "競馬場コード",
-                "Kaiji": "回次",
-                "Nichiji": "日次",
-                "RaceNum": "レース番号"
-            }
-            if id_part in id_map:
-                return f"最近重賞{num}の{id_map[id_part]}"
+        if field == "SaikinJyusyoid" or field == "_id":
+            return f"最近重賞{num}のレース識別情報"
 
         # 他のフィールド
         field_map = {
@@ -1289,8 +1360,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "KettoNum": "勝ち馬血統登録番号",
             "Bamei": "勝ち馬名"
         }
-        if field in field_map:
-            return f"最近重賞{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"最近重賞{num}の{field_description}"
 
         # Ryakusyoのバリエーション
         if "Ryakusyo" in field:
@@ -1474,8 +1546,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "Syukaisu": "周回数",
             "Jyuni": "通過順位"
         }
-        if field in field_map:
-            return f"{corner_num}コーナー{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"{corner_num}コーナー{field_description}"
         return f"{corner_num}コーナー情報"
 
     # === 血統情報配列（Ketto3Info0~13） ===
@@ -1520,8 +1593,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "FukaSyokinHeichi": "付加賞金・平地",
             "FukaSyokinSyogai": "付加賞金・障害"
         }
-        if field in field_map:
-            return f"{year_label}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"{year_label}の{field_description}"
 
     # === 初騎乗・初勝利詳細（HatuKiJyo, HatuSyori配列） ===
     hatuki_match = re.match(r'HatuKiJyo(\d+)(.+)', col)
@@ -1533,13 +1607,15 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             id_part = field.replace("Hatukijyoid", "")
             id_map = {"Year": "開催年", "MonthDay": "開催月日", "JyoCD": "競馬場コード",
                       "Kaiji": "回次", "Nichiji": "日次", "RaceNum": "レース番号"}
-            if id_part in id_map:
-                return f"初騎乗{num}の{id_map[id_part]}"
+            id_description = _casefold_lookup(id_map, id_part)
+            if id_description:
+                return f"初騎乗{num}の{id_description}"
 
         field_map = {"SyussoTosu": "出走頭数", "KettoNum": "騎乗馬血統番号",
                      "Bamei": "騎乗馬名", "KakuteiJyuni": "着順", "IJyoCD": "異常区分"}
-        if field in field_map:
-            return f"初騎乗{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"初騎乗{num}の{field_description}"
 
     hatusyori_match = re.match(r'HatuSyori(\d+)(.+)', col)
     if hatusyori_match:
@@ -1550,13 +1626,15 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             id_part = field.replace("Hatukijyoid", "")
             id_map = {"Year": "開催年", "MonthDay": "開催月日", "JyoCD": "競馬場コード",
                       "Kaiji": "回次", "Nichiji": "日次", "RaceNum": "レース番号"}
-            if id_part in id_map:
-                return f"初勝利{num}の{id_map[id_part]}"
+            id_description = _casefold_lookup(id_map, id_part)
+            if id_description:
+                return f"初勝利{num}の{id_description}"
 
         field_map = {"SyussoTosu": "出走頭数", "KettoNum": "騎乗馬血統番号",
                      "Bamei": "騎乗馬名", "KakuteiJyuni": "着順", "IJyoCD": "異常区分"}
-        if field in field_map:
-            return f"初勝利{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"初勝利{num}の{field_description}"
 
     # === 払戻配列（PayTansyo, PayFukusyo等） ===
     pay_match = re.match(r'Pay(Tansyo|Fukusyo|Wakuren|Umaren|Wide|Umatan|3fukutan|3tan|Win5|Reserved)(\d+)(.+)', col)
@@ -1570,11 +1648,12 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "Umaren": "馬連", "Wide": "ワイド", "Umatan": "馬単",
             "3fukutan": "3連複", "3tan": "3連単", "Win5": "WIN5", "Reserved": "予約"
         }
-        pay_name = pay_names.get(pay_type, pay_type)
+        pay_name = _casefold_lookup(pay_names, pay_type, pay_type)
 
         field_map = {"Umaban": "馬番", "Kumi": "組番", "Pay": "払戻金", "Ninki": "人気順"}
-        if field in field_map:
-            return f"{pay_name}払戻{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"{pay_name}払戻{num}の{field_description}"
 
     # === デジタルメモ配列（DMInfo0~17） ===
     dm_match = re.match(r'DMInfo(\d+)(.+)', col)
@@ -1582,8 +1661,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
         num = int(dm_match.group(1)) + 1
         field = dm_match.group(2)
         field_map = {"Umaban": "馬番", "DMTime": "タイム", "DMGosaP": "誤差（+）", "DMGosaM": "誤差（-）"}
-        if field in field_map:
-            return f"デジタルメモ{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"デジタルメモ{num}の{field_description}"
 
     # === 着馬情報配列（ChakuUmaInfo0~4） ===
     chaku_uma_match = re.match(r'ChakuUmaInfo(\d+)(.+)', col)
@@ -1612,8 +1692,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             num = int(hyo_match.group(1)) + 1
             field = hyo_match.group(2)
             field_map = {"Umaban": "馬番", "Kumi": "組番", "Hyo": "票数", "Ninki": "人気順"}
-            if field in field_map:
-                return f"{hyo_name}{num}の{field_map[field]}"
+            field_description = _casefold_lookup(field_map, field)
+            if field_description:
+                return f"{hyo_name}{num}の{field_description}"
 
     # === 枠連組番・票数 ===
     wakuren_match = re.match(r'WakurenKumi(\d+)', col)
@@ -1820,7 +1901,7 @@ def generate_column_description(table_name: str, column_name: str) -> str:
         if match:
             track = match.group(1)
             track_map = {"Siba": "芝", "Dirt": "ダート", "Syogai": "障害"}
-            return f"{jyo_name}{track_map.get(track, track)}着回数"
+            return f"{jyo_name}{_casefold_lookup(track_map, track, track)}着回数"
 
     # === NL_CH: 賞金・着度数詳細（H=平地, S=障害） ===
     ch_patterns = [
@@ -1970,8 +2051,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "TokuNum": "特別競走番号",
             "Hondai": "レース名",
         }
-        if field in field_map:
-            return f"重賞{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"重賞{num}の{field_description}"
 
     # === NL_RC: レコード馬情報 ===
     rec_uma = re.match(r'RecUma(.+?)(\d+)', col)
@@ -1984,8 +2066,9 @@ def generate_column_description(table_name: str, column_name: str) -> str:
             "SexCD": "性別コード",
             "Futan": "斤量",
         }
-        if field in field_map:
-            return f"レコード馬{num}の{field_map[field]}"
+        field_description = _casefold_lookup(field_map, field)
+        if field_description:
+            return f"レコード馬{num}の{field_description}"
 
     # === NL_UM: 血統情報（Bameiのみ） ===
     ketto_bamei = re.match(r'Ketto3InfoBamei(\d+)', col)

@@ -31,18 +31,18 @@ jrvltsql版ではテーブル名が以下の形式になります：
 
 ### 1. 人気（Ninki）カラムの形式
 
-**誤**: `WHERE Ninki = '1'`
-**正**: `WHERE Ninki = '01'`
+**誤**: `WHERE Ninki = '01'`
+**正**: `WHERE Ninki = 1`
 
-人気は2桁のゼロ埋め文字列で格納されています。
+jrvltsql 2.0では人気はINTEGERで格納されます。
 
 ```sql
 -- 正しい例
 SELECT * FROM NL_SE
-WHERE Ninki = '01'  -- 1番人気
+WHERE Ninki = 1  -- 1番人気
 
 SELECT * FROM NL_SE
-WHERE Ninki = '02'  -- 2番人気
+WHERE Ninki = 2  -- 2番人気
 ```
 
 ### 2. グレードコード（GradeCD）のフィルタリング
@@ -92,14 +92,13 @@ LIMIT 20
 レース結果のみを対象にする場合：
 
 ```sql
-WHERE KakuteiJyuni IS NOT NULL
-    AND LENGTH(KakuteiJyuni) > 0
+WHERE KakuteiJyuni > 0
 ```
 
 1着のみ：
 
 ```sql
-WHERE KakuteiJyuni = '01'
+WHERE KakuteiJyuni = 1
 ```
 
 ### 5. JOIN時の注意点
@@ -136,8 +135,7 @@ LEFT JOIN NL_RA ra ON
     se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
     se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
 WHERE se.Bamei LIKE '%馬名%'
-    AND se.KakuteiJyuni IS NOT NULL
-    AND LENGTH(se.KakuteiJyuni) > 0
+    AND se.KakuteiJyuni > 0
 ORDER BY se.Year DESC, se.MonthDay DESC
 LIMIT 10
 ```
@@ -148,13 +146,12 @@ LIMIT 10
 SELECT
     se.JyoCD as track_code,
     COUNT(*) as rides,
-    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+    SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
 FROM NL_SE se
 WHERE se.KisyuRyakusyo LIKE '%騎手名%'
-    AND se.KakuteiJyuni IS NOT NULL
-    AND LENGTH(se.KakuteiJyuni) > 0
-    AND se.Year >= '2023'
+    AND se.KakuteiJyuni > 0
+    AND se.Year >= 2023
 GROUP BY se.JyoCD
 ORDER BY wins DESC
 ```
@@ -165,18 +162,17 @@ ORDER BY wins DESC
 SELECT
     ra.GradeCD as grade,
     COUNT(*) as total_races,
-    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+    SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
 FROM NL_SE se
 JOIN NL_RA ra ON
     se.Year = ra.Year AND se.MonthDay = ra.MonthDay AND
     se.JyoCD = ra.JyoCD AND se.Kaiji = ra.Kaiji AND
     se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
-WHERE se.Ninki = '01'  -- 1番人気
-    AND se.KakuteiJyuni IS NOT NULL
-    AND LENGTH(se.KakuteiJyuni) > 0
+WHERE se.Ninki = 1  -- 1番人気
+    AND se.KakuteiJyuni > 0
     AND ra.GradeCD IN ('A', 'B', 'C')  -- 重賞のみ
-    AND se.Year >= '2023'
+    AND se.Year >= 2023
 GROUP BY ra.GradeCD
 ORDER BY grade
 ```
@@ -187,8 +183,8 @@ ORDER BY grade
 SELECT
     se.Wakuban as frame,
     COUNT(*) as runs,
-    SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as wins,
-    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = '01' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
+    SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as wins,
+    ROUND(CAST(SUM(CASE WHEN se.KakuteiJyuni = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 1) as win_rate
 FROM NL_SE se
 JOIN NL_RA ra ON
     se.Year = ra.Year AND se.MonthDay = ra.MonthDay AND
@@ -196,11 +192,10 @@ JOIN NL_RA ra ON
     se.Nichiji = ra.Nichiji AND se.RaceNum = ra.RaceNum
 WHERE ra.JyoCD = '05'  -- 東京
     AND ra.TrackCD LIKE '1%'  -- 芝
-    AND ra.Kyori = '1600'  -- 1600m
-    AND se.KakuteiJyuni IS NOT NULL
-    AND LENGTH(se.KakuteiJyuni) > 0
+    AND ra.Kyori = 1600  -- 1600m
+    AND se.KakuteiJyuni > 0
     AND se.Wakuban IS NOT NULL
-    AND se.Year >= '2022'
+    AND se.Year >= 2022
 GROUP BY se.Wakuban
 ORDER BY se.Wakuban
 ```
@@ -212,8 +207,8 @@ ORDER BY se.Wakuban
 | `NL_RA_RACE` | `NL_RA` | テーブル名変更 |
 | `NL_SE_RACE_UMA` | `NL_SE` | テーブル名変更 |
 | `idYear` | `Year` | カラム名変更 |
-| `Ninki = '1'` | `Ninki = '01'` | 2桁ゼロ埋め |
-| `KakuteiJyuni = '1'` | `KakuteiJyuni = '01'` | 2桁ゼロ埋め |
+| `Ninki = '01'` | `Ninki = 1` | 2.0ではINTEGER |
+| `KakuteiJyuni = '01'` | `KakuteiJyuni = 1` | 2.0ではINTEGER |
 | `Ketto3Info1Bamei` | `Ketto3InfoBamei1` | カラム名変更 |
 
 ## 血統情報の取得方法
@@ -230,7 +225,7 @@ SELECT
     u.Ketto3InfoBamei5 as 母父馬名
 FROM NL_SE s
 LEFT JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL
+WHERE s.KakuteiJyuni > 0
 ```
 
 **マッチング率**: 約85.5%（67,245 / 78,605件）
@@ -241,11 +236,11 @@ WHERE s.KakuteiJyuni IS NOT NULL
 SELECT 
     u.Ketto3InfoBamei1 as 種牡馬,
     COUNT(*) as 出走数,
-    SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1 ELSE 0 END) as 勝利数,
-    ROUND(SUM(CASE WHEN s.KakuteiJyuni = '01' THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
+    SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1 ELSE 0 END) as 勝利数,
+    ROUND(SUM(CASE WHEN s.KakuteiJyuni = 1 THEN 1.0 ELSE 0 END) / COUNT(*) * 100, 1) as 勝率
 FROM NL_SE s
 JOIN NL_UM u ON s.KettoNum = u.KettoNum
-WHERE s.KakuteiJyuni IS NOT NULL AND s.KakuteiJyuni != ''
+WHERE s.KakuteiJyuni > 0
 GROUP BY u.Ketto3InfoBamei1
 HAVING COUNT(*) >= 100
 ORDER BY 勝利数 DESC
@@ -261,14 +256,15 @@ LIMIT 20
 
 ## データ型について
 
-jrvltsqlでは**すべてのカラムがTEXT型**です。数値比較を行う場合は注意：
+jrvltsql 2.0では意味に応じてINTEGER、REAL、TEXTを使い分けます。
+実際の型は `get_table_schema` で確認してください：
 
 ```sql
--- 距離での比較
-WHERE CAST(Kyori AS INTEGER) >= 1600
+-- 数値列はそのまま比較
+WHERE Kyori >= 1600
 
--- または文字列比較（ゼロ埋めされている場合）
-WHERE Kyori >= '1600'
+-- コード列は先頭ゼロを保持するTEXT
+WHERE JyoCD IN ('05', '06')
 ```
 
 ## データ範囲の確認方法

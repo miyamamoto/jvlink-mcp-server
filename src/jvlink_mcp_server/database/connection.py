@@ -1,17 +1,81 @@
 """Database connection manager for JVLink databases"""
 
+import json
 import logging
 import os
+import re
 from typing import Any, Optional
 import warnings
 import pandas as pd
 
-from .utils import validate_identifier
+from .jrvltsql_2_contract import JRVLTSQL_2_PRIMARY_KEYS
+from .utils import (
+    is_unsupported_nar_table_name,
+    reject_unsupported_nar_table_reference,
+    validate_identifier,
+)
 
 logger = logging.getLogger(__name__)
 
 # Suppress pandas DuckDB connection warning
 warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy')
+
+
+def _resolved_relation_names(plan, relation_keys: set[str]):
+    """Yield physical relation names from an engine-produced JSON plan."""
+    if isinstance(plan, dict):
+        for key, value in plan.items():
+            if key in relation_keys and isinstance(value, str):
+                yield value
+            yield from _resolved_relation_names(value, relation_keys)
+    elif isinstance(plan, list):
+        for value in plan:
+            yield from _resolved_relation_names(value, relation_keys)
+
+
+def _adapt_qmark_parameters(query: str) -> str:
+    """Convert unquoted DB-API qmark placeholders to pg8000 format markers."""
+    result = []
+    quote = None
+    dollar_quote = None
+    index = 0
+    while index < len(query):
+        if dollar_quote:
+            if query.startswith(dollar_quote, index):
+                result.append(dollar_quote)
+                index += len(dollar_quote)
+                dollar_quote = None
+            else:
+                result.append(query[index])
+                index += 1
+            continue
+
+        char = query[index]
+        if quote:
+            result.append(char)
+            if char == quote:
+                if index + 1 < len(query) and query[index + 1] == quote:
+                    result.append(query[index + 1])
+                    index += 1
+                else:
+                    quote = None
+        elif char in ("'", '"'):
+            quote = char
+            result.append(char)
+        elif char == "$":
+            match = re.match(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$", query[index:])
+            if match:
+                dollar_quote = match.group(0)
+                result.append(dollar_quote)
+                index += len(dollar_quote)
+                continue
+            result.append(char)
+        elif char == "?":
+            result.append("%s")
+        else:
+            result.append(char)
+        index += 1
+    return "".join(result)
 
 
 class DatabaseConnection:
@@ -48,6 +112,17 @@ class DatabaseConnection:
         if not self.db_path:
             raise ValueError("DB_PATH environment variable not set for SQLite")
         self.connection = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
+
+        def authorize(action, first_arg, _second_arg, _database, _trigger):
+            if (
+                action == sqlite3.SQLITE_READ
+                and isinstance(first_arg, str)
+                and is_unsupported_nar_table_name(first_arg)
+            ):
+                return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
+
+        self.connection.set_authorizer(authorize)
         return self.connection
 
     def _connect_duckdb(self):
@@ -88,12 +163,106 @@ class DatabaseConnection:
             host=host, port=port, database=database,
             user=user, password=password
         )
-        # 読み取り専用モードに設定
-        cursor = self.connection.cursor()
-        cursor.execute("SET default_transaction_read_only = on")
-        self.connection.commit()
-        cursor.close()
+        try:
+            # Use an explicitly configured role when the login role is also used
+            # by an importer.  The effective role is validated even when no role
+            # switch is requested, so a superuser/writer login fails closed.
+            self._activate_postgresql_readonly_role(self.connection)
+            cursor = self.connection.cursor()
+            cursor.execute("SET default_transaction_read_only = on")
+            cursor.close()
+            self.connection.commit()
+        except Exception:
+            self.connection.rollback()
+            self.connection.close()
+            self.connection = None
+            raise
         return self.connection
+
+    def _activate_postgresql_readonly_role(self, connection) -> None:
+        """Select and validate the effective role used for PostgreSQL reads."""
+        readonly_role = os.getenv("DB_READONLY_ROLE")
+        if readonly_role:
+            validate_identifier(readonly_role, "PostgreSQL read-only role")
+            cursor = connection.cursor()
+            try:
+                cursor.execute(f'SET ROLE "{readonly_role}"')
+            finally:
+                cursor.close()
+        self._assert_postgresql_role_boundary(connection)
+
+    def _assert_postgresql_role_boundary(self, connection) -> None:
+        """Fail unless PostgreSQL permissions enforce the JRA-only boundary.
+
+        SQL text and outer query plans cannot reveal tables read inside a
+        PL/pgSQL or SECURITY DEFINER function.  The effective database role is
+        therefore required to be non-privileged, unable to read NAR relations,
+        and unable to execute non-system SECURITY DEFINER code.
+        """
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    role.rolsuper,
+                    role.rolbypassrls,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_catalog.pg_class AS relation
+                        WHERE relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+                          AND lower(relation.relname) ~
+                              '^(nar_[a-z0-9_]+|[a-z_][a-z0-9_]*_nar)$'
+                          AND (
+                              has_table_privilege(
+                                  current_user, relation.oid, 'SELECT'
+                              )
+                              OR has_any_column_privilege(
+                                  current_user, relation.oid, 'SELECT'
+                              )
+                          )
+                    ) AS can_read_nar,
+                    EXISTS (
+                        SELECT 1
+                        FROM pg_catalog.pg_proc AS routine
+                        JOIN pg_catalog.pg_namespace AS namespace
+                          ON namespace.oid = routine.pronamespace
+                        WHERE routine.prosecdef
+                          AND namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+                          AND namespace.nspname <> 'information_schema'
+                          AND has_function_privilege(
+                              current_user, routine.oid, 'EXECUTE'
+                          )
+                    ) AS can_execute_security_definer
+                FROM pg_catalog.pg_roles AS role
+                WHERE role.rolname = current_user
+                """
+            )
+            boundary = cursor.fetchone()
+        finally:
+            cursor.close()
+
+        if boundary is None:
+            raise ValueError(
+                "Unable to validate the PostgreSQL read-only role."
+            )
+
+        is_superuser, bypasses_rls, can_read_nar, can_execute_definer = boundary
+        if is_superuser or bypasses_rls:
+            raise ValueError(
+                "PostgreSQL provider isolation requires a non-superuser "
+                "read-only role without BYPASSRLS."
+            )
+        if can_read_nar:
+            raise ValueError(
+                "The PostgreSQL read-only role can access NAR tables; revoke "
+                "those privileges before starting JVLink MCP Server."
+            )
+        if can_execute_definer:
+            raise ValueError(
+                "The PostgreSQL read-only role can execute non-system "
+                "SECURITY DEFINER stored functions; revoke EXECUTE before "
+                "starting JVLink MCP Server."
+            )
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
         """SQLクエリを実行してDataFrameで結果を返す
@@ -110,6 +279,8 @@ class DatabaseConnection:
         if self.db_type in ["sqlite", "duckdb"]:
             return pd.read_sql_query(query, conn, params=params)
         elif self.db_type == "postgresql":
+            if params and "?" in query:
+                query = _adapt_qmark_parameters(query)
             return pd.read_sql_query(query, conn, params=params)
 
     def execute_safe_query(self, query: str, params: Optional[tuple] = None) -> pd.DataFrame:
@@ -125,6 +296,8 @@ class DatabaseConnection:
         Raises:
             ValueError: 危険なクエリが検出された場合
         """
+        reject_unsupported_nar_table_reference(query)
+
         # 複文実行をブロック（セミコロンによる複数SQL文の実行を防止）
         if ';' in query.strip().rstrip(';'):
             raise ValueError("Multiple SQL statements are not allowed.")
@@ -143,7 +316,63 @@ class DatabaseConnection:
             if re.search(r'\b' + keyword + r'\b', query_upper):
                 raise ValueError(f"Dangerous keyword '{keyword}' detected in query. Only SELECT queries are allowed.")
 
+        self._assert_engine_provider_isolation(query, params)
         return self.execute_query(query, params=params)
+
+    def _assert_engine_provider_isolation(
+        self, query: str, params: Optional[tuple]
+    ) -> None:
+        """Ask the selected engine which physical relations the query binds."""
+        connection = self.connect()
+        relation_names = []
+
+        if self.db_type == "sqlite":
+            import sqlite3
+
+            try:
+                connection.execute(f"EXPLAIN QUERY PLAN {query}", params or ())
+            except sqlite3.DatabaseError as exc:
+                if "prohibited" in str(exc) or "not authorized" in str(exc):
+                    raise ValueError(
+                        "NAR tables are not supported by JVLink MCP Server."
+                    ) from None
+                raise
+            return
+
+        if self.db_type == "duckdb":
+            rows = connection.execute(
+                f"EXPLAIN (FORMAT JSON) {query}", params or ()
+            ).fetchall()
+            for row in rows:
+                if len(row) > 1 and isinstance(row[1], str):
+                    plan = json.loads(row[1])
+                    relation_names.extend(
+                        _resolved_relation_names(plan, {"Table"})
+                    )
+
+        elif self.db_type == "postgresql":
+            # Re-apply the restricted role for every public query.  This also
+            # repairs a role reset attempted by an earlier statement before any
+            # query is planned or executed.
+            self._activate_postgresql_readonly_role(connection)
+            explain_query = query
+            if params and "?" in explain_query:
+                explain_query = _adapt_qmark_parameters(explain_query)
+            cursor = connection.cursor()
+            try:
+                if params:
+                    cursor.execute(f"EXPLAIN (FORMAT JSON) {explain_query}", params)
+                else:
+                    cursor.execute(f"EXPLAIN (FORMAT JSON) {explain_query}")
+                plan = cursor.fetchone()[0]
+            finally:
+                cursor.close()
+            relation_names.extend(
+                _resolved_relation_names(plan, {"Relation Name"})
+            )
+
+        if any(is_unsupported_nar_table_name(name) for name in relation_names):
+            raise ValueError("NAR tables are not supported by JVLink MCP Server.")
 
     def get_tables(self) -> list[str]:
         """データベース内のテーブル一覧を取得"""
@@ -157,7 +386,14 @@ class DatabaseConnection:
             query = "SELECT tablename FROM pg_tables WHERE schemaname='public'"
 
         result = self.execute_query(query)
-        return result.iloc[:, 0].tolist()
+        physical_tables = {
+            str(table).casefold(): str(table) for table in result.iloc[:, 0].tolist()
+        }
+        return [
+            table_name
+            for table_name in JRVLTSQL_2_PRIMARY_KEYS
+            if table_name.casefold() in physical_tables
+        ]
 
     def get_table_schema(self, table_name: str) -> pd.DataFrame:
         """テーブルのスキーマ情報を取得
@@ -171,18 +407,30 @@ class DatabaseConnection:
         validate_identifier(table_name, "table name")
         self.connect()
 
+        supported_table_lookup = {
+            name.casefold(): name for name in JRVLTSQL_2_PRIMARY_KEYS
+        }
+        canonical_table_name = supported_table_lookup.get(table_name.casefold())
+        if canonical_table_name is None:
+            raise ValueError(
+                f"テーブル '{table_name}' は存在しません"
+                "（not a supported JRA table）。"
+            )
+
         # テーブル名のホワイトリスト検証
         valid_tables = self.get_tables()
-        if table_name not in valid_tables:
+        valid_table_lookup = {name.casefold(): name for name in valid_tables}
+        actual_table_name = valid_table_lookup.get(canonical_table_name.casefold())
+        if actual_table_name is None:
             raise ValueError(f"テーブル '{table_name}' は存在しません。有効なテーブル: {valid_tables}")
 
         if self.db_type == "sqlite":
-            query = f"PRAGMA table_info({table_name})"
+            query = f"PRAGMA table_info({actual_table_name})"
             df = self.execute_query(query)
             df = df.rename(columns={"name": "column_name", "type": "column_type"})
 
         elif self.db_type == "duckdb":
-            query = f"DESCRIBE {table_name}"
+            query = f"DESCRIBE {actual_table_name}"
             df = self.execute_query(query)
 
         elif self.db_type == "postgresql":
@@ -192,7 +440,7 @@ class DatabaseConnection:
                 WHERE table_name = %s
                 ORDER BY ordinal_position
             """
-            df = self.execute_query(query, params=(table_name,))
+            df = self.execute_query(query, params=(actual_table_name.lower(),))
             df = df.rename(columns={"data_type": "column_type"})
 
         return df

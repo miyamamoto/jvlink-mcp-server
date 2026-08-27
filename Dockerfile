@@ -37,6 +37,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser data/ ./data/
 COPY --chown=appuser:appuser README.md ./
 
 # Create directory for database files (if using SQLite/DuckDB)

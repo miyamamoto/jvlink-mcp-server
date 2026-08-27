@@ -10,11 +10,11 @@ from mcp.server.fastmcp import FastMCP
 # .envファイルを読み込む
 load_dotenv()
 from .database.connection import DatabaseConnection
+from .database.utils import reject_unsupported_nar_table_reference
 from .database.schema_info import (
     get_schema_description,
     get_target_equivalent_query_examples,
     TRACK_CODES,
-    NAR_TRACK_CODES,
     GRADE_CODES,
 )
 from .database.schema_descriptions import (
@@ -35,9 +35,6 @@ from .database.high_level_api import (
     get_frame_stats as _get_frame_stats,
     get_horse_history as _get_horse_history,
     get_sire_stats as _get_sire_stats,
-    get_nar_favorite_performance as _get_nar_favorite_performance,
-    get_nar_jockey_stats as _get_nar_jockey_stats,
-    get_nar_horse_history as _get_nar_horse_history,
 )
 from .database.sample_data_provider import (
     get_sample_data as _get_sample_data,
@@ -55,8 +52,11 @@ if _update_notice:
     import logging as _logging
     _logging.getLogger(__name__).info(_update_notice)
 
-# データディレクトリのパス（パッケージルートからの相対パス）
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+# Wheel builds include data beside the package. Editable/source checkouts keep
+# the historical repository-level data directory as a development fallback.
+DATA_DIR = Path(__file__).parent / "data"
+if not DATA_DIR.exists():
+    DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
 # 特徴量知見データの読み込み
 _feature_importance_path = DATA_DIR / "feature_importance.json"
@@ -176,15 +176,6 @@ def track_codes_resource() -> str:
     JVLinkで使用される競馬場コードのマスタデータ
     """
     return json.dumps(TRACK_CODES, ensure_ascii=False, indent=2)
-
-
-@mcp.resource("codes://nar_tracks")
-def nar_track_codes_resource() -> str:
-    """NAR地方競馬場コード一覧
-
-    NARで使用される地方競馬場コードのマスタデータ（30-57）
-    """
-    return json.dumps(NAR_TRACK_CODES, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("codes://grades")
@@ -454,13 +445,30 @@ def validate_sql_query(sql_query: str) -> dict:
     query_upper = sql_query.upper()
     found_dangerous = [kw for kw in dangerous_keywords if kw in query_upper]
 
-    is_safe = len(found_dangerous) == 0 and "SELECT" in query_upper
+    try:
+        reject_unsupported_nar_table_reference(sql_query)
+        unsupported_provider = False
+    except ValueError:
+        unsupported_provider = True
+
+    is_safe = (
+        len(found_dangerous) == 0
+        and "SELECT" in query_upper
+        and not unsupported_provider
+    )
+    if unsupported_provider:
+        recommendation = "NARテーブルはこのMCPのサポート対象外です"
+    elif is_safe:
+        recommendation = "安全に実行可能"
+    else:
+        recommendation = "危険なキーワードが含まれています"
 
     return {
         "is_safe": is_safe,
         "query": sql_query,
         "dangerous_keywords_found": found_dangerous,
-        "recommendation": "安全に実行可能" if is_safe else "危険なキーワードが含まれています",
+        "unsupported_provider_table": unsupported_provider,
+        "recommendation": recommendation,
         "can_execute": is_safe
     }
 
@@ -569,63 +577,6 @@ def analyze_sire_stats(
 
 
 # ============================================================================
-# NAR（地方競馬）High-level API
-# ============================================================================
-
-@mcp.tool(name="nar_favorite_performance")
-def analyze_nar_favorite_performance(
-    ninki: int = 1,
-    venue: Optional[str] = None,
-    year_from: Optional[str] = None,
-    distance: Optional[int] = None
-) -> dict:
-    """NAR地方競馬の人気別成績を分析
-
-    大井、船橋、川崎、浦和、名古屋、園田など地方競馬場の人気別勝率を調べられます。
-    """
-    with DatabaseConnection() as db:
-        return _get_nar_favorite_performance(
-            db, venue=venue, ninki=ninki,
-            year_from=year_from, distance=distance
-        )
-
-
-@mcp.tool(name="nar_jockey_stats")
-def analyze_nar_jockey_stats(
-    jockey_name: str,
-    venue: Optional[str] = None,
-    year_from: Optional[str] = None
-) -> dict:
-    """NAR地方競馬の騎手成績を分析
-
-    地方競馬の騎手名を指定して、勝率・複勝率・騎乗数などを調べられます。
-    """
-    with DatabaseConnection() as db:
-        return _get_nar_jockey_stats(
-            db, jockey_name=jockey_name, venue=venue, year_from=year_from
-        )
-
-
-@mcp.tool(name="nar_horse_history")
-def get_nar_horse_race_history(
-    horse_name: str,
-    year_from: Optional[str] = None
-) -> dict:
-    """NAR地方競馬の馬の過去レース戦績を取得
-
-    地方競馬で出走した馬の戦績を一覧できます。
-    """
-    with DatabaseConnection() as db:
-        df = _get_nar_horse_history(db, horse_name=horse_name, year_from=year_from)
-        return {
-            "horse_name": horse_name,
-            "total_races": len(df),
-            "data": df.to_dict(orient="records"),
-            "columns": df.columns.tolist()
-        }
-
-
-# ============================================================================
 # Query Templates
 # ============================================================================
 
@@ -703,7 +654,7 @@ def check_update() -> dict:
 
 @mcp.tool()
 def update_server() -> dict:
-    """サーバーを最新バージョンにアップデートする。git pull + 依存関係の更新を行います。"""
+    """サーバーを更新する。Git checkoutは自動更新し、wheel導入時は手順を返します。"""
     return perform_update()
 
 

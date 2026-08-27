@@ -2,145 +2,205 @@ name: Sync with jrvltsql
 
 on:
   schedule:
-    - cron: '0 1 * * *'   # 毎日 01:00 UTC (日本時間 10:00)
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
-  check-and-release:
-    name: Check jrvltsql → auto-release if tests pass
+  check-and-propose:
+    name: Validate jrvltsql and propose an update PR
     runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # タグ操作に必要
+          fetch-depth: 0
 
-      # ── 1. 親プロジェクトの最新バージョンを取得 ──────────────────────────
       - name: Get latest jrvltsql release
         id: parent
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST=$(gh api repos/miyamamoto/jrvltsql/releases/latest \
-            --jq '.tag_name' 2>/dev/null || echo "")
-
-          if [ -z "$LATEST" ]; then
-            LATEST=$(gh api repos/miyamamoto/jrvltsql/tags \
-              --jq '.[0].name' 2>/dev/null || echo "unknown")
-          fi
-
-          STORED=$(cat .github/jrvltsql_version.txt | tr -d '[:space:]')
-
-          echo "latest=$LATEST"  >> $GITHUB_OUTPUT
-          echo "stored=$STORED"  >> $GITHUB_OUTPUT
-
-          if [ "$LATEST" != "$STORED" ] && [ "$LATEST" != "unknown" ] && [ -n "$LATEST" ]; then
-            echo "new_release=true" >> $GITHUB_OUTPUT
-            echo "::notice::New jrvltsql release detected: $STORED → $LATEST"
+          LATEST=$(gh api repos/miyamamoto/jrvltsql/releases/latest --jq '.tag_name')
+          PARENT_SHA=$(gh api "repos/miyamamoto/jrvltsql/commits/$LATEST" --jq '.sha')
+          STORED=$(tr -d '[:space:]' < .github/jrvltsql_version.txt)
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$PARENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "stored=$STORED" >> "$GITHUB_OUTPUT"
+          if [ -n "$LATEST" ] && [ "$LATEST" != "$STORED" ]; then
+            echo "new_release=true" >> "$GITHUB_OUTPUT"
           else
-            echo "new_release=false" >> $GITHUB_OUTPUT
-            echo "::notice::jrvltsql is up to date ($STORED). Nothing to do."
+            echo "new_release=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── 2. 新バージョンがなければ終了 ─────────────────────────────────────
-      - name: Skip if no new release
-        if: steps.parent.outputs.new_release == 'false'
-        run: exit 0
+      - name: Set up Python 3.12
+        if: steps.parent.outputs.new_release == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      # ── 3. 単体テストを実行（DB不要） ────────────────────────────────────
       - name: Install uv
+        if: steps.parent.outputs.new_release == 'true'
         uses: astral-sh/setup-uv@v4
 
-      - name: Install dependencies
-        run: uv sync --dev
+      - name: Install server and exact upstream release
+        if: steps.parent.outputs.new_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uv sync --dev
+          mkdir -p /tmp/jrvltsql-release
+          gh release download "${{ steps.parent.outputs.latest }}" \
+            --repo miyamamoto/jrvltsql --pattern '*.whl' \
+            --dir /tmp/jrvltsql-release
+          uv pip install --python .venv/bin/python /tmp/jrvltsql-release/*.whl
 
-      - name: Run unit tests
+      - name: Build an upstream SQLite schema
+        if: steps.parent.outputs.new_release == 'true'
+        run: |
+          mkdir -p /tmp/jrvltsql-smoke
+          cd /tmp/jrvltsql-smoke
+          "$GITHUB_WORKSPACE/.venv/bin/jltsql" init --force
+          "$GITHUB_WORKSPACE/.venv/bin/jltsql" create-tables --db sqlite
+          test -s data/keiba.db
+          echo "JRVLTSQL_SCHEMA_DB=$PWD/data/keiba.db" >> "$GITHUB_ENV"
+
+      - name: Validate generated schema and server tests
         id: tests
+        if: steps.parent.outputs.new_release == 'true'
         run: |
-          uv run pytest \
-            tests/unit/ \
-            tests/test_connection.py \
-            tests/test_query_corrector.py \
-            tests/test_query_templates.py \
-            tests/test_high_level_api.py \
-            -v --tb=short 2>&1 | tee test_output.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          uv run python - <<'PY'
+          import os
+          from jvlink_mcp_server.database.jrvltsql_2_contract import validate_sqlite_schema
 
-      # ── 4a. テスト失敗 → Issue を開いて終了 ──────────────────────────────
-      - name: Open issue on test failure
-        if: steps.tests.outputs.exit_code != '0'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const latest = '${{ steps.parent.outputs.latest }}';
-            const stored = '${{ steps.parent.outputs.stored }}';
-            const fs = require('fs');
-            const output = fs.readFileSync('test_output.txt', 'utf8').slice(-3000);
+          errors = validate_sqlite_schema(os.environ["JRVLTSQL_SCHEMA_DB"])
+          if errors:
+              raise SystemExit("\n".join(errors))
+          PY
+          uv run pytest -q
 
-            const label = 'parent-update';
-            const existing = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              state: 'open',
-              labels: label,
-            });
-            if (existing.data.some(i => i.title.includes(latest))) return;
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              title: `⚠️ jrvltsql ${latest} — テスト失敗・手動確認が必要です`,
-              labels: [label],
-              body: [
-                '## jrvltsql 新バージョンでテストが失敗しました',
-                '',
-                `**旧バージョン**: \`${stored}\`  **新バージョン**: \`${latest}\``,
-                '',
-                '### テスト出力（末尾 3000 文字）',
-                '```',
-                output,
-                '```',
-                '',
-                '### 対応手順',
-                '1. 上記エラーを確認し、スキーマ変更に合わせてコードを修正',
-                '2. テストが通ることを確認したら `.github/jrvltsql_version.txt` を更新',
-                '3. バージョンを手動でバンプしてタグ付け → 自動リリース',
-              ].join('\n'),
-            });
-
-      - name: Fail job on test failure
-        if: steps.tests.outputs.exit_code != '0'
-        run: exit 1
-
-      # ── 4b. テスト成功 → バージョンバンプ＆自動リリース ─────────────────
-      - name: Bump patch version
-        id: bump
+      - name: Prepare update tree
+        if: steps.parent.outputs.new_release == 'true'
+        id: update
+        env:
+          PARENT_TAG: ${{ steps.parent.outputs.latest }}
+          PARENT_SHA: ${{ steps.parent.outputs.commit_sha }}
         run: |
-          CURRENT=$(grep '^version' pyproject.toml | head -1 | cut -d'"' -f2)
-          MAJOR=$(echo $CURRENT | cut -d. -f1)
-          MINOR=$(echo $CURRENT | cut -d. -f2)
-          PATCH=$(echo $CURRENT | cut -d. -f3)
+          CURRENT=$(python - <<'PY'
+          import tomllib
+          print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])
+          PY
+          )
+          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
           NEW="$MAJOR.$MINOR.$((PATCH + 1))"
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "new=$NEW"         >> $GITHUB_OUTPUT
-          echo "tag=v$NEW"        >> $GITHUB_OUTPUT
+          BRANCH="chore/jrvltsql-$PARENT_TAG"
+          BRANCH=${BRANCH//\//-}
+          git checkout -B "$BRANCH"
+          export CURRENT NEW
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
 
-          # pyproject.toml のバージョンを更新
-          sed -i "s/^version = \"$CURRENT\"/version = \"$NEW\"/" pyproject.toml
+          current = os.environ["CURRENT"]
+          new = os.environ["NEW"]
+          parent_tag = os.environ["PARENT_TAG"]
+          parent_version = parent_tag.removeprefix("v")
+          parent_sha = os.environ["PARENT_SHA"]
 
-      - name: Update tracked jrvltsql version
-        run: echo "${{ steps.parent.outputs.latest }}" > .github/jrvltsql_version.txt
+          def replace_once(path: str, pattern: str, replacement: str) -> None:
+              file_path = Path(path)
+              contents = file_path.read_text(encoding="utf-8")
+              updated, count = re.subn(pattern, replacement, contents, count=1)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one version surface in {path}")
+              file_path.write_text(updated, encoding="utf-8")
 
-      - name: Commit and tag
+          replace_once(
+              "pyproject.toml",
+              rf'(?m)^version = "{re.escape(current)}"$',
+              f'version = "{new}"',
+          )
+          replace_once(
+              "src/jvlink_mcp_server/__init__.py",
+              rf'(?m)^__version__ = "{re.escape(current)}"$',
+              f'__version__ = "{new}"',
+          )
+          manifest_path = Path("manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          if manifest.get("version") != current:
+              raise SystemExit("manifest version does not match pyproject.toml")
+          manifest["version"] = new
+          manifest_path.write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          contract_path = "src/jvlink_mcp_server/database/jrvltsql_2_contract.py"
+          replace_once(
+              contract_path,
+              r'(?m)^JRVLTSQL_VERSION = "[^"]+"$',
+              f'JRVLTSQL_VERSION = "{parent_version}"',
+          )
+          replace_once(
+              contract_path,
+              r'(?m)^JRVLTSQL_GIT_SHA = "[0-9a-f]{40}"$',
+              f'JRVLTSQL_GIT_SHA = "{parent_sha}"',
+          )
+          Path(".github/jrvltsql_version.txt").write_text(
+              parent_tag + "\n", encoding="utf-8"
+          )
+          PY
+          uv lock
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Validate proposed tree
+        if: steps.parent.outputs.new_release == 'true'
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          uv run pytest -q
+          uv build --out-dir /tmp/jvlink-mcp-proposal
 
-          git add pyproject.toml .github/jrvltsql_version.txt
-          git commit -m "chore: bump to ${{ steps.bump.outputs.new }} (jrvltsql ${{ steps.parent.outputs.latest }})"
-          git tag ${{ steps.bump.outputs.tag }}
-          git push origin HEAD:master --follow-tags
+      - name: Open issue on validation failure
+        if: failure() && steps.parent.outputs.new_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "jrvltsql ${{ steps.parent.outputs.latest }} compatibility validation failed" \
+            --label parent-update \
+            --body "The exact upstream wheel, generated SQLite schema, or proposed MCP update failed the compatibility gate. Inspect workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+
+      - name: Commit and push proposal
+        if: steps.parent.outputs.new_release == 'true'
+        env:
+          PARENT_TAG: ${{ steps.parent.outputs.latest }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/jrvltsql_version.txt \
+            manifest.json \
+            pyproject.toml \
+            src/jvlink_mcp_server/__init__.py \
+            src/jvlink_mcp_server/database/jrvltsql_2_contract.py \
+            uv.lock
+          git commit -m "chore: validate jrvltsql $PARENT_TAG"
+          git push --force-with-lease origin "${{ steps.update.outputs.branch }}"
+
+      - name: Open or update compatibility PR
+        if: steps.parent.outputs.new_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.update.outputs.branch }}"
+          if gh pr view "$BRANCH" >/dev/null 2>&1; then
+            gh pr comment "$BRANCH" --body "Revalidated against exact jrvltsql ${{ steps.parent.outputs.latest }} in run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID."
+          else
+            gh pr create --base master --head "$BRANCH" \
+              --title "chore: support jrvltsql ${{ steps.parent.outputs.latest }}" \
+              --body "Installs the exact upstream wheel, builds a fresh SQLite schema, validates all tracked primary keys, and runs the full MCP suite before proposing server v${{ steps.update.outputs.version }}. No tag or release is created before review and merge."
+          fi

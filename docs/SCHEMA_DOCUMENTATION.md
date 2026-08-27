@@ -151,7 +151,7 @@ WHERE JyoCD = '05' AND GradeCD = 'A'
 
 ### 追加予定の説明
 
-- [x] NL_HC (坂路調教/HANRO タイム) — jrvltsql v1.6 で実装・説明追加
+- [x] NL_HC (坂路調教/HANRO タイム) — 現行2.0スキーマへ同期
 - [ ] NL_WC_WOOD (調教)
 - [ ] NL_JG_JOGAIBA (馬場情報)
 - [x] NL_HR (払戻金・配当配列) — 複勝5件/ワイド7件等の全配当に説明追加

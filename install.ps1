@@ -13,7 +13,7 @@ $JrvltsqlDir = if ($env:JRVLTSQL_DIR) { $env:JRVLTSQL_DIR } else { "$HOME\jrvlts
 
 Write-Host ""
 Write-Host "  ╔════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  ║   JVLink MCP Server インストーラー v0.5.0  ║" -ForegroundColor Cyan
+Write-Host "  ║   JVLink MCP Server インストーラー v0.7.0  ║" -ForegroundColor Cyan
 Write-Host "  ╚════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
@@ -124,10 +124,7 @@ if ($DbPath) {
     Write-Host "    1. JRA-VAN DataLab 契約（中央競馬データ）"
     Write-Host "       → https://jra-van.jp/dlb/"
     Write-Host ""
-    Write-Host "    2. 地方競馬DATA 契約（地方競馬データ・任意）"
-    Write-Host "       → https://www.keiba-data.com/"
-    Write-Host ""
-    Write-Host "    3. jrvltsql でデータベースを構築"
+    Write-Host "    2. jrvltsql でJRAデータベースを構築"
     Write-Host "       → https://github.com/miyamamoto/jrvltsql"
     Write-Host ""
 
@@ -141,6 +138,10 @@ if ($DbPath) {
     $installJrvltsql = Read-Host "jrvltsql も一緒にインストールしますか？ [Y/n]"
     if ($installJrvltsql -ne "n") {
         Write-Header "    jrvltsql インストール"
+        if ([int]$pyParts[0] -lt 3 -or ([int]$pyParts[0] -eq 3 -and [int]$pyParts[1] -lt 12)) {
+            Write-Err "jrvltsql 2.0.0にはPython 3.12以上が必要です（検出: $pyVer）"
+            exit 1
+        }
         if (Test-Path "$JrvltsqlDir\.git") {
             Push-Location $JrvltsqlDir
             git pull --ff-only 2>$null
@@ -152,13 +153,15 @@ if ($DbPath) {
             Write-OK "jrvltsql をクローンしました → $JrvltsqlDir"
         }
         Push-Location $JrvltsqlDir
-        & $py -m pip install -e . --quiet 2>$null
+        uv sync --quiet 2>$null
+        if ($LASTEXITCODE -ne 0) { uv sync }
         Pop-Location
         Write-OK "jrvltsql インストール完了"
         Write-Host ""
         Write-Info "データベース構築は以下を実行してください:"
         Write-Host "    cd $JrvltsqlDir"
-        Write-Host "    python scripts/quickstart.py"
+        Write-Host "    uv run jltsql init"
+        Write-Host "    uv run jltsql create-tables --db sqlite"
         Write-Host ""
     }
 

@@ -1,13 +1,17 @@
 """Auto-update and version checking for jvlink-mcp-server."""
 
 import json
+import importlib.metadata
 import logging
+import os
 import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+from packaging.version import InvalidVersion, Version
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +20,55 @@ GITHUB_REPO = "jvlink-mcp-server"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-UPDATE_CHECK_FILE = PROJECT_ROOT / ".update_check.json"
+
+
+def _default_update_check_file() -> Path:
+    """Return a writable per-user path for update-check state."""
+    override = os.environ.get("JVLINK_MCP_STATE_DIR")
+    if override:
+        state_root = Path(override).expanduser()
+    elif sys.platform == "win32":
+        state_root = Path(
+            os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")
+        )
+    elif sys.platform == "darwin":
+        state_root = Path.home() / "Library" / "Caches"
+    else:
+        state_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return state_root / "jvlink-mcp-server" / "update_check.json"
+
+
+UPDATE_CHECK_FILE = _default_update_check_file()
 
 
 def get_current_version() -> str:
-    """Get current version from git tag or pyproject.toml."""
-    try:
-        result = subprocess.run(
-            ["git", "describe", "--tags", "--abbrev=0"],
-            capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=5,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-    except Exception:
-        pass
+    """Get current version from git, source metadata, or installed metadata."""
+    toml_path = PROJECT_ROOT / "pyproject.toml"
+    source_checkout = toml_path.is_file() and (PROJECT_ROOT / ".git").exists()
+
+    if source_checkout:
+        try:
+            result = subprocess.run(
+                ["git", "describe", "--tags", "--abbrev=0"],
+                capture_output=True, text=True, cwd=str(PROJECT_ROOT), timeout=5,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
 
     try:
-        toml_path = PROJECT_ROOT / "pyproject.toml"
         if toml_path.exists():
             for line in toml_path.read_text(encoding="utf-8").splitlines():
                 if line.strip().startswith("version"):
                     return line.split("=")[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+
+    try:
+        return importlib.metadata.version("jvlink-mcp-server")
+    except importlib.metadata.PackageNotFoundError:
+        pass
     except Exception:
         pass
 
@@ -58,9 +90,9 @@ def _normalize_version(v: str) -> list[int]:
 def _version_newer(latest: str, current: str) -> bool:
     """Return True if latest is newer than current."""
     try:
-        return _normalize_version(latest) > _normalize_version(current)
-    except Exception:
-        return latest != current
+        return Version(latest.lstrip("v")) > Version(current.lstrip("v"))
+    except (InvalidVersion, TypeError, AttributeError):
+        return False
 
 
 def check_for_updates() -> Optional[dict]:
@@ -172,6 +204,18 @@ def perform_update(confirmed: bool = False) -> dict:
 
     results["from_version"] = info["current_version"]
     results["to_version"] = info["latest_version"]
+
+    if not (PROJECT_ROOT / ".git").exists():
+        results["requires_manual_update"] = True
+        results["release_url"] = info.get("html_url", "")
+        results["message"] = (
+            f"アップデートが利用可能です: {info['current_version']} → "
+            f"{info['latest_version']}\n"
+            "このサーバーはインストール済みパッケージとして実行されています。"
+            "実行環境で `python -m pip install --upgrade jvlink-mcp-server` "
+            "（または利用中のパッケージ管理ツール）を実行し、サーバーを再起動してください。"
+        )
+        return results
 
     # 確認が未完了の場合は確認メッセージを返す
     if not confirmed:

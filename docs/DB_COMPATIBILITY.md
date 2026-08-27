@@ -4,7 +4,9 @@ JVLink MCP Serverは、SQLite、DuckDB、PostgreSQLの3種類のデータベー�
 
 ## データベース作成ツール
 
-データベースを作成するには、[jrvltsql](https://github.com/miyamamoto/jrvltsql) を使用します。
+SQLite/PostgreSQLデータベースを作成するには、
+[jrvltsql](https://github.com/miyamamoto/jrvltsql) 2.0.0以降を使用します。
+DuckDBはMCPの読み取り互換入力ですが、jrvltsqlの直接出力ではありません。
 
 ```bash
 # jrvltsqlでデータベースを作成
@@ -49,12 +51,7 @@ GROUP BY r.JyoCD;
 
 ### DuckDBへの移行方法
 
-#### 方法1: jrvltsqlで新規作成（推奨）
-
-jrvltsqlはSQLite、DuckDB、PostgreSQLへの書き込みに対応しています。
-詳細は [jrvltsql](https://github.com/miyamamoto/jrvltsql) のドキュメントを参照してください。
-
-#### 方法2: SQLiteからDuckDBにインポート
+#### SQLiteからDuckDBにインポート
 
 ```bash
 # DuckDB CLIでSQLiteをインポート
@@ -108,7 +105,7 @@ elif self.db_type == "duckdb":
 elif self.db_type == "postgresql":
     # テーブル名はvalidate_identifier()で検証済み、クエリはパラメータ化
     query = "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = %s"
-    df = self.execute_query(query, params=(table_name,))
+    df = self.execute_query(query, params=(table_name.lower(),))
     # data_type -> column_type に変換
     df = df.rename(columns={"data_type": "column_type"})
 
