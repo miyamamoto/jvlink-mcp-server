@@ -223,3 +223,14 @@ change the development collector or either PostgreSQL database.
   NAR table after `/* outer /* nested */ still outer */`; the added regression
   failed red. Block-comment masking now tracks nesting depth, and the focused
   JRA-only/schema/connection selection remains green (`39 passed`).
+- The review of `3944d762c43394ccda855370efb9ccabfffcab04` then found two new
+  concrete gaps. Both were reproduced red together (`2 failed`): PostgreSQL's
+  standalone `TABLE NL_RA_NAR` syntax bypassed the guard, and template-only
+  `NL_SE.Odds TEXT` plus missing `HaronTimeL3` were not rejected by the upstream
+  schema gate.
+- `TABLE` is now a table-reference introducer alongside `FROM`/`JOIN`. The
+  required column/type registry was completed for every field used by public
+  query templates, including race-result odds/times/weight, race track/count,
+  and the exposed pedigree fields. The official v2.0.0-generated SQLite DB
+  remains green with the expanded template contract; focused schema/JRA-only/
+  template tests report `41 passed`.

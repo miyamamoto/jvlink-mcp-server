@@ -75,3 +75,8 @@ def test_nar_physical_tables_are_not_accessible_through_generic_tools(tmp_path) 
         reject_unsupported_nar_table_reference(
             "SELECT COUNT(*) FROM /* outer /* nested */ still outer */ NL_RA_NAR"
         )
+    with pytest.raises(ValueError, match="NAR tables are not supported"):
+        reject_unsupported_nar_table_reference("TABLE NL_RA_NAR")
+
+    table_validation = server.validate_sql_query("TABLE NL_RA_NAR")
+    assert table_validation["unsupported_provider_table"] is True

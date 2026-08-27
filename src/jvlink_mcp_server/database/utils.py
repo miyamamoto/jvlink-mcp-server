@@ -106,7 +106,7 @@ def _referenced_tables(query: str):
     while index < len(tokens):
         token = tokens[index]
         upper = _identifier_value(token).upper()
-        if upper in {"FROM", "JOIN"}:
+        if upper in {"FROM", "JOIN", "TABLE"}:
             in_from_clause = True
             expect_table = True
             index += 1

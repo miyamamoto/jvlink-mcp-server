@@ -178,7 +178,8 @@ def test_upstream_schema_validator_rejects_required_non_key_drift(tmp_path):
     database_path = tmp_path / "required-columns.db"
     with sqlite3.connect(database_path) as connection:
         connection.execute(
-            "CREATE TABLE NL_SE (Year INTEGER PRIMARY KEY, KakuteiJyuni TEXT)"
+            "CREATE TABLE NL_SE (Year INTEGER PRIMARY KEY, KakuteiJyuni TEXT, "
+            "Odds TEXT)"
         )
 
     errors = validate_sqlite_schema(database_path, {"NL_SE": ("Year",)})
@@ -186,6 +187,8 @@ def test_upstream_schema_validator_rejects_required_non_key_drift(tmp_path):
     assert (
         "NL_SE.KakuteiJyuni: type mismatch: expected INTEGER, got TEXT" in errors
     )
+    assert "NL_SE: required column missing: HaronTimeL3" in errors
+    assert "NL_SE.Odds: type mismatch: expected REAL, got TEXT" in errors
 
 
 def test_release_versions_and_upstream_lock_are_consistent():

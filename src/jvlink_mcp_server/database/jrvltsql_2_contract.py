@@ -30,6 +30,8 @@ JRVLTSQL_2_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
         "Hondai": "TEXT",
         "GradeCD": "TEXT",
         "Kyori": "INTEGER",
+        "TrackCD": "TEXT",
+        "SyussoTosu": "INTEGER",
     },
     "NL_SE": {
         "Year": "INTEGER",
@@ -44,12 +46,23 @@ JRVLTSQL_2_REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
         "Bamei": "TEXT",
         "KisyuRyakusyo": "TEXT",
         "KakuteiJyuni": "INTEGER",
+        "Odds": "REAL",
         "Time": "REAL",
+        "HaronTimeL3": "REAL",
+        "BaTaijyu": "REAL",
         "Ninki": "INTEGER",
     },
     "NL_UM": {
         "KettoNum": "TEXT",
+        "Bamei": "TEXT",
+        "SexCD": "TEXT",
+        "BirthDate": "TEXT",
         "Ketto3InfoBamei1": "TEXT",
+        "Ketto3InfoBamei2": "TEXT",
+        "Ketto3InfoBamei5": "TEXT",
+        "SanchiName": "TEXT",
+        "BreederName": "TEXT",
+        "BanusiName": "TEXT",
     },
 }
 
